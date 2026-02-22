@@ -20,10 +20,12 @@ bool ChessSquare::canDropBitAtPoint(Bit *newbit, const ImVec2 &point)
     //
     // xor the gametags to see if we have opposing colors
     //
-    if ((bit()->gameTag() ^ newbit->gameTag()) >= 128)
-    {
+    if ((bit()->gameTag() >  6 && newbit->gameTag() < 7) ||
+        (bit()->gameTag() <  7 && newbit->gameTag() > 6) ){
+        
         return true;
     }
+
     return false;
 }
 
@@ -37,8 +39,9 @@ bool ChessSquare::dropBitAtPoint(Bit *newbit, const ImVec2 &point)
         return true;
     }
     // we're taking a piece!
-    if ((bit()->gameTag() ^ newbit->gameTag()) >= 128)
-    {
+    if ((bit()->gameTag() >  6 && newbit->gameTag() < 7) ||
+        (bit()->gameTag() <  7 && newbit->gameTag() > 6) ){
+            
         setBit(newbit);
         newbit->setParent(this);
         newbit->moveTo(getPosition());
