@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Sprite.h"
+#include <cstdint>
 
 class Player;
 class BitHolder;

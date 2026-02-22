@@ -12,6 +12,36 @@ namespace ClassGame {
         Game *game = nullptr;
         bool gameOver = false;
         int gameWinner = -1;
+        int aiStatus = 2;
+        int aiType = 0;
+        unsigned int sessions = 0;
+
+
+        const char* dispAIPlayerStatus(int status){
+            switch(status){
+                case 0 : return "AI Player: None";
+                case 1 : return "AI Player: 1";
+                case 2 : return "AI Player: 2";
+                case 3 : return "AI Player: Both";
+            }
+            return "AI Player: ERROR!";
+        }
+
+        const char* dispAIType(int status){
+            switch(status){
+                case 0 : return "AI Type: Random";
+                case 1 : return "AI Type: 1";
+                case 2 : return "AI Type: 2";
+            }
+            return "AI Type: ERROR!";
+        }
+
+        void getSessions(){
+            ImGui::SameLine();
+            ImGui::InputScalar("Training Sessions", ImGuiDataType_U32, &sessions);
+            sessions = std::max(0U, sessions);
+        }
+
 
         //
         // game starting point
@@ -35,32 +65,54 @@ namespace ClassGame {
                 ImGui::Begin("Settings");
 
                 if (gameOver) {
-                    ImGui::Text("Game Over!");
+                    ImGui::Text("Game Over! ");
+                    ImGui::SameLine();
                     ImGui::Text("Winner: %d", gameWinner);
-                    if (ImGui::Button("Reset Game")) {
+                }
+                if (sessions) {
+                    ImGui::Text("Sessions Left: %d", sessions);
+                }
+                if(gameOver && sessions > 0){
+                        --sessions;
                         game->stopGame();
                         game->setUpBoard();
                         gameOver = false;
                         gameWinner = -1;
-                    }
                 }
                 if (!game) {
                     if (ImGui::Button("Start Tic-Tac-Toe")) {
                         game = new TicTacToe();
                         game->setUpBoard();
                     }
+                    ImGui::SameLine();
                     if (ImGui::Button("Start Checkers")) {
                         game = new Checkers();
                         game->setUpBoard();
                     }
+                    ImGui::SameLine();
                     if (ImGui::Button("Start Othello")) {
                         game = new Othello();
                         game->setUpBoard();
                     }
+                    ImGui::SameLine();
                     if (ImGui::Button("Start Chess")) {
                         game = new Chess();
                         game->setUpBoard();
                     }
+                    
+                    if (ImGui::Button(dispAIPlayerStatus(aiStatus))) {
+                        aiStatus = (aiStatus+1) % 4;
+                    }
+                    if(aiStatus == 3){
+                        getSessions();
+                    }else{
+                        sessions = 0;
+                    }
+
+                    if (ImGui::Button(dispAIType(aiType))) {
+                        aiType = (aiType+1) % 3;
+                    }
+
                 } else {
                     ImGui::Text("Current Player Number: %d", game->getCurrentPlayer()->playerNumber());
                     std::string stateString = game->stateString();
@@ -68,9 +120,30 @@ namespace ClassGame {
                     int height = game->_gameOptions.rowY;
 
                     for(int y=0; y<height; y++) {
+                        if(y*stride + stride > stateString.length()) break;
                         ImGui::Text("%s", stateString.substr(y*stride,stride).c_str());
                     }
-                    ImGui::Text("Current Board State: %s", game->stateString().c_str());
+
+
+                    ImGui::Text("Current Board State: %s", game->stateString().c_str());;
+
+
+                    if (ImGui::Button("Reset Game")) {
+                        game->stopGame();
+                        game->setUpBoard();
+                        gameOver = false;
+                        gameWinner = -1;
+                    }
+                    ImGui::SameLine();
+                    if (ImGui::Button("Back")) {
+                        sessions = 0;
+                        delete game;
+                        game = nullptr;
+                    }
+
+
+
+                    
                 }
                 ImGui::End();
 
