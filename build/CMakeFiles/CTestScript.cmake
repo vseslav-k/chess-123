@@ -2,11 +2,11 @@
 # If you choose not to use CMake, this file may be hand configured, by
 # filling in the required variables.
 
-cmake_minimum_required(VERSION 4.2.1)
+cmake_minimum_required(VERSION 4.2.2)
 
 # CTest Start Step
-set(CTEST_SOURCE_DIRECTORY "C:/Users/vsesl/OneDrive/Documents/CMPM123/chess-123")
-set(CTEST_BINARY_DIRECTORY "C:/Users/vsesl/OneDrive/Documents/CMPM123/chess-123/build")
+set(CTEST_SOURCE_DIRECTORY "C:/Users/vsesl/Documents/UCSC/CMPM123/chess-123")
+set(CTEST_BINARY_DIRECTORY "C:/Users/vsesl/Documents/UCSC/CMPM123/chess-123/build")
 
 # CTest Update Step
 set(CTEST_UPDATE_COMMAND "C:/Program Files/Git/cmd/git.exe")
@@ -61,7 +61,7 @@ set(CTEST_MEMORYCHECK_SANITIZER_OPTIONS "")
 set(CTEST_MEMORYCHECK_SUPPRESSIONS_FILE "")
 
 # CTest Submit Step
-set(CTEST_SITE "laptop14")
+set(CTEST_SITE "VSDESKTOP")
 set(CTEST_BUILD_NAME "Win32-ninja")
 set(CTEST_SUBMIT_URL "http://")
 set(CTEST_SUBMIT_INACTIVITY_TIMEOUT "")

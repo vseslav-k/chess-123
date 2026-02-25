@@ -12,6 +12,7 @@
 #include <d3d11.h>
 #include <tchar.h>
 #include "Application.h"
+#include "C:\Libraries\imgui\logger\logger.h"
 
 // Data
 ID3D11Device*            g_pd3dDevice = nullptr;
@@ -147,6 +148,7 @@ int main(int, char**)
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
         ClassGame::RenderGame();
+        DrawLogWindow();
 
         // Rendering
         ImGui::Render();

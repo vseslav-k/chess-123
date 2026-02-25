@@ -2,7 +2,7 @@
 #include <limits>
 #include <cmath>
 
-Chess::Chess()
+Chess::Chess(): _board()
 {
     _grid = new Grid(8, 8);
 }
@@ -12,6 +12,33 @@ Chess::~Chess()
     delete _grid;
 }
 
+
+PieceIdentity Chess::getPieceIdentity(Bit *bit){
+    switch(bit->gameTag()){
+        case 0: return PieceIdentity();
+        case 1: return PieceIdentity(White, Pawn);
+        case 2: return PieceIdentity(White, Knight);
+        case 3: return PieceIdentity(White, Bishop);
+        case 4: return PieceIdentity(White, Rook);
+        case 5: return PieceIdentity(White, Queen);
+        case 6: return PieceIdentity(White, King);
+        case 7: return PieceIdentity();
+        case 8: return PieceIdentity(Black, Pawn);
+        case 9: return PieceIdentity(Black, Knight);
+        case 10:return PieceIdentity(Black, Bishop);
+        case 11:return PieceIdentity(Black, Rook);
+        case 12:return PieceIdentity(Black, Queen);
+        case 13:return PieceIdentity(Black, King);
+        default:return PieceIdentity();
+    }
+}
+
+uint8_t Chess::getIdx(BitHolder *target){
+    for(int i = 0; i < 8; ++i)
+        for(int j = 0; j < 8; ++j)
+            if(static_cast<BitHolder*>(_grid->getSquare(i, j)) == target)
+                return cordsToIdx({i,j});
+}
 
 ChessPiece Chess::charToPiece(const char p){
     switch((p >= 97? p - 32: p)){
@@ -50,7 +77,6 @@ std::pair<uint8_t, uint8_t> Chess::idxToCords(uint8_t idx){
 
 char Chess::pieceNotation(int x, int y) const
 {
-
     Bit *bit = _grid->getSquare(x, y)->bit();
     char notation = '0';
     if (bit) {
@@ -59,7 +85,7 @@ char Chess::pieceNotation(int x, int y) const
     return notation;
 }
 
-Bit* Chess::PieceForPlayer(const int playerNumber, ChessPiece piece)
+Bit* Chess::PieceForPlayer(const int playerNumber, const ChessPiece piece)
 {
     const char* pieces[] = { "pawn.png", "knight.png", "bishop.png", "rook.png", "queen.png", "king.png" };
 
@@ -128,20 +154,27 @@ bool Chess::actionForEmptyHolder(BitHolder &holder)
 
 bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
 {
-    // need to implement friendly/unfriendly in bit so for now this hack
-    return(
-        (getCurrentPlayer()->playerNumber() == 0 && bit.gameTag() < 7) ||
-        (getCurrentPlayer()->playerNumber() == 1 && bit.gameTag() >= 7));
+    return( (getCurrentPlayer()->playerNumber() == 0 && bit.gameTag() < 7) || (getCurrentPlayer()->playerNumber() == 1 && bit.gameTag() >= 7) );
+
+
+
 }
 
 bool Chess::canBitMoveFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
 {
+    return Board::canPieceMoveFromTo(
+        _board.getMoves(
+            getPieceIdentity(bit), 
+            getIdx(src)
+        ),
 
-    return true;
+        getIdx(dst)
+    );
 }
 
 
 void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
+    _board.movePiece(getPieceIdentity(bit), getIdx(src), getIdx(dst));
     endTurn();
 }
 
