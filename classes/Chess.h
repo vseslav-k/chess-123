@@ -2,20 +2,13 @@
 
 #include "Game.h"
 #include "Grid.h"
+#include "ChessVals.h"
+#include "bitops.h"
 #include <array>
 
 constexpr int pieceSize = 80;
 
-enum ChessPiece
-{
-    NoPiece,
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King
-};
+
 
 class Chess final: public Game
 {
