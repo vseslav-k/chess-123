@@ -19,9 +19,9 @@ public:
     bool            pieceExists(uint8_t idx);
 
 
-    bool            movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
-    bool            movePiece(PieceIdentity identity, uint8_t srcIdx, uint8_t dstIdx) {return movePiece(identity.color, identity.piece, srcIdx, dstIdx);}
-    bool            movePiece(uint8_t srcIdx, uint8_t dstIdx);
+    uint8_t            movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
+    uint8_t            movePiece(PieceIdentity identity, uint8_t srcIdx, uint8_t dstIdx) {return movePiece(identity.color, identity.piece, srcIdx, dstIdx);}
+    uint8_t            movePiece(uint8_t srcIdx, uint8_t dstIdx);
 
     uint64_t        getMoves(Color color, ChessPiece piece, uint8_t idx);
     uint64_t        getMoves(PieceIdentity identity, uint8_t idx) {return getMoves(identity.color, identity.piece, idx);}
@@ -34,6 +34,8 @@ public:
 
     static bool     canPieceMoveFromTo(uint64_t moves, uint8_t dstIdx){return moves & setBit(0ULL, dstIdx, true);}
     static bool     canPieceMoveFromTo(uint64_t moves, uint64_t dst){return moves & dst;}
+
+    
 
     Board();
 
@@ -49,7 +51,7 @@ private:
     uint64_t _whites;
     uint64_t _blacks;
 
-    uint8_t _enPassantPos;
+    uint8_t _enPassantIdx;
     uint8_t _castling;
 
     uint64_t&        accessBitBoard(Color color, ChessPiece piece){return _pieces[color][piece-1];}
@@ -71,6 +73,10 @@ private:
     uint64_t getMovesRookBlack(uint8_t idx);
     uint64_t getMovesQueenBlack(uint8_t idx);
     uint64_t getMovesKingBlack(uint8_t idx);
+
+
+    
+    void handleMoveSideEffect(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
 
 
 };

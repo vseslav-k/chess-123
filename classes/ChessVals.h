@@ -41,6 +41,12 @@ enum Color: bool{
     Black = 1
 };
 
+inline Color operator!(Color c){
+    return static_cast<Color>(!static_cast<bool>(c));
+}
+
+
+
 struct PieceIdentity{
     Color color;
     ChessPiece piece;

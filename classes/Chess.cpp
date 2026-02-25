@@ -85,6 +85,14 @@ char Chess::pieceNotation(int x, int y) const
     return notation;
 }
 
+BitHolder *Chess::getHolder(uint8_t idx){
+    std::pair<uint8_t, uint8_t> cords = idxToCords(idx);
+
+    ChessSquare* sqr = _grid->getSquare(cords.first, cords.second);
+
+    return static_cast<BitHolder*>(sqr);
+}
+
 Bit* Chess::PieceForPlayer(const int playerNumber, const ChessPiece piece)
 {
     const char* pieces[] = { "pawn.png", "knight.png", "bishop.png", "rook.png", "queen.png", "king.png" };
@@ -174,7 +182,18 @@ bool Chess::canBitMoveFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
 
 
 void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
-    _board.movePiece(getPieceIdentity(bit), getIdx(src), getIdx(dst));
+    uint8_t res = _board.movePiece(getPieceIdentity(bit), getIdx(src), getIdx(dst));
+
+    //if en passant occured
+    if(res == 2){
+        if(getIdx(src) > getIdx(dst)){
+            getHolder(getIdx(dst)+8)->destroyBit();
+        }
+        if(getIdx(src) < getIdx(dst)){
+            getHolder(getIdx(dst)-8)->destroyBit();
+        }
+    }
+
     endTurn();
 }
 

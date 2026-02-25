@@ -47,6 +47,8 @@ private:
     uint8_t getIdx(BitHolder *target);
     uint8_t getIdx(BitHolder &target){return getIdx( &target);}
 
+    BitHolder *getHolder(uint8_t idx);
+
     Bit* PieceForPlayer(const int playerNumber, const ChessPiece piece);
     Player* ownerAt(int x, int y) const;
     void FENtoBoard(const std::string& fen);

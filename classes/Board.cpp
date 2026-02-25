@@ -15,6 +15,51 @@ PieceIdentity Board::determinePiece(uint8_t idx){
     return PieceIdentity();
 }
 
+void Board::handleMoveSideEffect(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
+    //if moving pawn twice, record enpassant
+    if(piece == Pawn){
+        if(srcIdx + 16 == dstIdx)
+            _enPassantIdx = srcIdx + 8;
+        else if(srcIdx - 16 == dstIdx)
+            _enPassantIdx = srcIdx -8;
+        else
+            _enPassantIdx = 0;
+    }else{
+        _enPassantIdx = 0;
+    }
+
+    log(Info, "EP: "+ numToStr(_enPassantIdx));
+
+    //if moving king remove casteling
+    if(piece == King){
+        if(color == White){
+            setBitInPlace(_castling, 0, 0);
+            setBitInPlace(_castling, 1, 0);
+        }
+        if(color == Black){
+            setBitInPlace(_castling, 0, 2);
+            setBitInPlace(_castling, 1, 3);
+        }
+    }
+
+    //if moving rook remove casteling on that side
+    if(piece == Rook){
+        if(color == White && srcIdx == 56){
+            setBitInPlace(_castling, 0, 0);
+        }
+        if(color == White && srcIdx == 63){
+            setBitInPlace(_castling, 1, 0);
+        }
+
+        if(color == Black && srcIdx == 0){
+            setBitInPlace(_castling, 2, 0);
+        }
+        if(color == Black && srcIdx == 7){
+            setBitInPlace(_castling, 3, 0);
+        }
+    }
+}
+
 
 
 void Board::updateBitBoards(Color color, ChessPiece piece, uint64_t oldPiecePos, uint64_t newPiecePos){
@@ -42,23 +87,33 @@ bool Board::pieceExists(uint8_t idx){
     return pieceExists(identity.color, identity.piece, idx);
 }
 
-bool Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
+uint8_t Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
     uint64_t moves = getMoves(color, piece, srcIdx);
     uint64_t newPiecePos = setBit(0ULL, dstIdx, true);
-    if(!canPieceMoveFromTo(moves, newPiecePos)) return false;
+    if(!canPieceMoveFromTo(moves, newPiecePos)) return 0;
 
 
     PieceIdentity dstPiece = determinePiece(dstIdx);
 
-    if(color != dstPiece.color && dstPiece.piece != NoPiece)
+    if(color != dstPiece.color && dstPiece.piece != NoPiece) [[likely]]
         updateBitBoards(dstPiece.color , dstPiece.piece, newPiecePos, 0ULL);
+
+    uint8_t enPassantOccured = 0;
+    if(dstIdx == _enPassantIdx) [[unlikely]]{
+        updateBitBoards(!color , Pawn, newPiecePos<<8, 0ULL);
+        updateBitBoards(!color , Pawn, newPiecePos>>8, 0ULL);
+        log(Info, "Pawn BB:"+ numToStrBin(getBitBoard(!color, Pawn)));
+        ++enPassantOccured;
+    }
+        
     updateBitBoards(color, piece, setBit(0ULL, srcIdx, true), newPiecePos);
+    
+    handleMoveSideEffect(color, piece, srcIdx, dstIdx);
 
-
-    return true;
+    return enPassantOccured+1;
 }
 
-bool Board::movePiece(uint8_t srcIdx, uint8_t dstIdx){
+uint8_t Board::movePiece(uint8_t srcIdx, uint8_t dstIdx){
     PieceIdentity identity = determinePiece(srcIdx);
     return movePiece(identity.color, identity.piece,srcIdx,dstIdx);
 }
@@ -127,12 +182,18 @@ uint64_t Board::getMovesPawnWhite(uint8_t idx){
     if((left & _blacks) && !(left & Col7))
         moves |= left;
     */
-    moves |= (left & _blacks & ~Col7);   
+    moves |= (left & (_blacks | setBit(0ULL, _enPassantIdx, 1)));   
     /*
     if((right & _blacks) && !(right & Col0))
         moves |= right;
     */
-    moves |= (right & _blacks & ~Col0);
+    moves |= (right & (_blacks | setBit(0ULL, _enPassantIdx, 1)));
+    
+
+    moves &= ~((idx % 8 == 0) * UTIL_BOARDS[Col7]);
+    moves &= ~(((idx-7) % 8 == 0) * UTIL_BOARDS[Col0]);
+
+
     return moves;
 }
 
@@ -149,13 +210,13 @@ uint64_t Board::getMovesKnightWhite(uint8_t idx){
         moves &= ~(Col6 | Col7);
     }
     */
-    moves &= ~((Col6 | Col7) * (idx % 8 == 0 || (idx-1) % 8 == 0));
+    moves &= ~((UTIL_BOARDS[Col6] | UTIL_BOARDS[Col7]) * (idx % 8 == 0 || (idx-1) % 8 == 0));
     /*
     if((idx+1) % 8 == 0 || (idx+2) % 8 == 0){
         moves &= ~(Col0 | Col1);
     }
     */
-    moves &= ~((Col0 | Col1) * ((idx+1) % 8 == 0 || (idx+2) % 8 == 0));
+    moves &= ~((UTIL_BOARDS[Col0] | UTIL_BOARDS[Col1]) * ((idx+1) % 8 == 0 || (idx+2) % 8 == 0));
 
     moves &= ~_whites;
 
@@ -210,12 +271,18 @@ uint64_t Board::getMovesPawnBlack(uint8_t idx){
     if((left & _whites) && !(left & Col7))
         moves |= left;
     */
-    moves |= (left & _whites & ~Col7);
+    moves |= (right & (_whites | setBit(0ULL, _enPassantIdx, 1)));
     /*
     if((right & _whites) && !(right & Col0))
         moves |= right;
     */
-    moves |= (right & _whites & ~Col0);
+    moves |= (left & (_whites | setBit(0ULL, _enPassantIdx, 1)));
+
+
+    moves &= ~((idx % 8 == 0) * UTIL_BOARDS[Col7]);
+    moves &= ~(((idx-7) % 8 == 0) * UTIL_BOARDS[Col0]);
+
+    
     return moves;
 }
 
@@ -232,13 +299,13 @@ uint64_t Board::getMovesKnightBlack(uint8_t idx){
         moves &= ~(Col6 | Col7);
     }
     */
-    moves &= ~((Col6 | Col7) * (idx % 8 == 0 || (idx-1) % 8 == 0));
+    moves &= ~((UTIL_BOARDS[Col6] | UTIL_BOARDS[Col7]) * (idx % 8 == 0 || (idx-1) % 8 == 0));
     /*
     if((idx+1) % 8 == 0 || (idx+2) % 8 == 0){
         moves &= ~(Col0 | Col1);
     }
     */
-    moves &= ~((Col0 | Col1) * ((idx+1) % 8 == 0 || (idx+2) % 8 == 0));
+    moves &= ~((UTIL_BOARDS[Col0] | UTIL_BOARDS[Col1]) * ((idx+1) % 8 == 0 || (idx+2) % 8 == 0));
 
     moves &= ~_blacks;
 
@@ -291,6 +358,6 @@ Board::Board(){
     _occupied = _whites | _blacks;
     _free = ~_occupied;
 
-    _enPassantPos = 0;
-    _castling = 0;
+    _enPassantIdx = 0;
+    _castling = 0b11110000;
 }
