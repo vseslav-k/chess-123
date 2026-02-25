@@ -116,10 +116,39 @@ void Chess::setUpBoard()
     _gameOptions.rowY = 8;
 
     _grid->initializeChessSquares(pieceSize, "boardsquare.png");
-    FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    //FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
 
+    boardToGrid();
     startGame();
 }
+
+void Chess::boardToGrid(){
+    stopGame();
+
+    for(Color c = White; true; c = !c){
+
+        for(ChessPiece p = Pawn; true ; p = static_cast<ChessPiece>(p+1)){
+
+            for(uint8_t i = 0; i < 64; ++i){
+                if(getBit(_board.getBitBoard(c,p), i) == 1){
+
+                    Bit* bit = PieceForPlayer(c, p);
+                    BitHolder* holder = getHolder(i);
+                    holder-> setBit(bit);
+                    bit-> setPosition(holder->getPosition());
+                }
+            }
+
+
+            if(p == King) break;
+        }
+    
+        if(c==Black) break;
+    }
+
+}
+
+
 
 void Chess::FENtoBoard(const std::string& fen) {
     // convert a FEN string to a board
@@ -157,6 +186,7 @@ void Chess::FENtoBoard(const std::string& fen) {
 
 bool Chess::actionForEmptyHolder(BitHolder &holder)
 {
+    log(Debug, _board.getFen());
     return false;
 }
 
@@ -182,19 +212,31 @@ bool Chess::canBitMoveFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
 
 
 void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
-    uint8_t res = _board.movePiece(getPieceIdentity(bit), getIdx(src), getIdx(dst));
-
-    //if en passant occured
-    if(res == 2){
-        if(getIdx(src) > getIdx(dst)){
-            getHolder(getIdx(dst)+8)->destroyBit();
-        }
-        if(getIdx(src) < getIdx(dst)){
-            getHolder(getIdx(dst)-8)->destroyBit();
-        }
-    }
+    MoveResults res = _board.movePiece(getPieceIdentity(bit), getIdx(src), getIdx(dst));
+    //log(Info, "MoveRes " + numToStr(static_cast<uint8_t>(res)));
+    handleMoveResult(bit, src, dst, res);
 
     endTurn();
+}
+
+
+void Chess::handleMoveResult(Bit &bit, BitHolder &src, BitHolder &dst, MoveResults r){
+    switch(r){
+        case Illegal:{
+            //log(Warn, "Illegal move attempted from: " + numToStr(getIdx(src)) + " to: " + numToStr(getIdx(dst)) + " bit: " + numToStr(bit.gameTag()));
+            return;
+        }
+        case EnPassant:{
+            //log(Info, "EnPassant in handleMoveResult");
+            if(getIdx(src) > getIdx(dst)){
+                getHolder(getIdx(dst)+8)->destroyBit();
+            }
+            if(getIdx(src) < getIdx(dst)){
+                getHolder(getIdx(dst)-8)->destroyBit();
+            }
+            return;
+        }
+    }
 }
 
 

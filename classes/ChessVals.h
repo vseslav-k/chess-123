@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <array>
+#include "C:\Libraries\imgui\logger\logger.h"
 
 inline constexpr std::array<uint64_t, 16> makeUtilBoards(){
     std::array<uint64_t, 16> utilBoards = {};
@@ -41,10 +42,21 @@ enum Color: bool{
     Black = 1
 };
 
+enum MoveResults: uint8_t{\
+    Illegal,
+    Legal,
+    EnPassant,
+    CastleWL,
+    CastleWR,
+    CastleBL,
+    CastleBR,
+    Check,
+    Mate
+};
+
 inline Color operator!(Color c){
     return static_cast<Color>(!static_cast<bool>(c));
 }
-
 
 
 struct PieceIdentity{

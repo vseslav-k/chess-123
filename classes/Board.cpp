@@ -15,20 +15,23 @@ PieceIdentity Board::determinePiece(uint8_t idx){
     return PieceIdentity();
 }
 
-void Board::handleMoveSideEffect(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
+MoveResults Board::handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
     //if moving pawn twice, record enpassant
     if(piece == Pawn){
-        if(srcIdx + 16 == dstIdx)
+        if(srcIdx + 16 == dstIdx){
             _enPassantIdx = srcIdx + 8;
-        else if(srcIdx - 16 == dstIdx)
+            return EnPassant;
+        }
+        else if(srcIdx - 16 == dstIdx){
             _enPassantIdx = srcIdx -8;
-        else
+            return EnPassant;
+        }
+        else{
             _enPassantIdx = 0;
+        }
     }else{
         _enPassantIdx = 0;
     }
-
-    log(Info, "EP: "+ numToStr(_enPassantIdx));
 
     //if moving king remove casteling
     if(piece == King){
@@ -58,6 +61,8 @@ void Board::handleMoveSideEffect(Color color, ChessPiece piece, uint8_t srcIdx, 
             setBitInPlace(_castling, 3, 0);
         }
     }
+
+    return Legal;
 }
 
 
@@ -78,7 +83,7 @@ void Board::updateBitBoards(Color color, ChessPiece piece, uint64_t oldPiecePos,
 }
 
 bool Board::pieceExists(Color color, ChessPiece piece, uint8_t idx){
-    return getBit(_pieces[color][piece-1], idx);
+    return getBit(getBitBoard(color, piece), idx);
 }
 
 
@@ -87,33 +92,33 @@ bool Board::pieceExists(uint8_t idx){
     return pieceExists(identity.color, identity.piece, idx);
 }
 
-uint8_t Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
+MoveResults Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
     uint64_t moves = getMoves(color, piece, srcIdx);
     uint64_t newPiecePos = setBit(0ULL, dstIdx, true);
-    if(!canPieceMoveFromTo(moves, newPiecePos)) return 0;
+    if(!canPieceMoveFromTo(moves, newPiecePos)) return Illegal;
 
 
     PieceIdentity dstPiece = determinePiece(dstIdx);
+    uint8_t moveRes = Legal;
 
     if(color != dstPiece.color && dstPiece.piece != NoPiece) [[likely]]
         updateBitBoards(dstPiece.color , dstPiece.piece, newPiecePos, 0ULL);
 
-    uint8_t enPassantOccured = 0;
-    if(dstIdx == _enPassantIdx) [[unlikely]]{
+    if(dstIdx == _enPassantIdx && piece == Pawn) [[unlikely]]{
         updateBitBoards(!color , Pawn, newPiecePos<<8, 0ULL);
         updateBitBoards(!color , Pawn, newPiecePos>>8, 0ULL);
-        log(Info, "Pawn BB:"+ numToStrBin(getBitBoard(!color, Pawn)));
-        ++enPassantOccured;
+        //log(Info, "Pawn BB:"+ numToStrBin(getBitBoard(!color, Pawn)));
+        ++moveRes;
     }
         
     updateBitBoards(color, piece, setBit(0ULL, srcIdx, true), newPiecePos);
     
-    handleMoveSideEffect(color, piece, srcIdx, dstIdx);
+    handleMoveResult(color, piece, srcIdx, dstIdx);
 
-    return enPassantOccured+1;
+    return static_cast<MoveResults>(moveRes);
 }
 
-uint8_t Board::movePiece(uint8_t srcIdx, uint8_t dstIdx){
+MoveResults Board::movePiece(uint8_t srcIdx, uint8_t dstIdx){
     PieceIdentity identity = determinePiece(srcIdx);
     return movePiece(identity.color, identity.piece,srcIdx,dstIdx);
 }
@@ -196,7 +201,6 @@ uint64_t Board::getMovesPawnWhite(uint8_t idx){
 
     return moves;
 }
-
 uint64_t Board::getMovesKnightWhite(uint8_t idx){
     uint64_t me = setBit(0ULL, idx, 1);
     uint64_t moves = 0;
@@ -285,7 +289,6 @@ uint64_t Board::getMovesPawnBlack(uint8_t idx){
     
     return moves;
 }
-
 uint64_t Board::getMovesKnightBlack(uint8_t idx){
     uint64_t me = setBit(0ULL, idx, 1);
     uint64_t moves = 0;
@@ -338,7 +341,65 @@ uint64_t Board::getMovesKingBlack(uint8_t idx){
 }
 
 
-Board::Board(){
+
+std::string Board::toString(){
+
+    std::string res = "";
+    res.reserve(73);
+    for(int i = 0; i < 64; ++i){
+        if(getBit(getBitBoard(White, Pawn), i)) res +=      'P';
+        if(getBit(getBitBoard(White, Knight), i)) res +=    'N';
+        if(getBit(getBitBoard(White, Bishop), i)) res +=    'B';
+        if(getBit(getBitBoard(White, Rook), i)) res +=      'R';
+        if(getBit(getBitBoard(White, Queen), i)) res +=     'Q';
+        if(getBit(getBitBoard(White, King), i)) res +=      'K';
+        
+
+
+        if(getBit(getBitBoard(Black, Pawn), i)) res +=      'p';
+        if(getBit(getBitBoard(Black, Knight), i)) res +=    'n';
+        if(getBit(getBitBoard(Black, Bishop), i)) res +=    'b';
+        if(getBit(getBitBoard(Black, Rook), i)) res +=      'r';
+        if(getBit(getBitBoard(Black, Queen), i)) res +=     'q';
+        if(getBit(getBitBoard(Black, King), i)) res +=      'k';
+
+        if(getBit(getOccupancyAll(), i) == 0) res +=        '#';
+        if((i-7)%8 == 0) res +=                             '\n';
+    }
+
+    return res;
+}
+std::string Board::getFen(){
+    //"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
+    
+    std::string simpleStr = toString();
+    std::string res = "";
+
+    int counter = 0;
+    for(int i = 0; i < 71; ++i){
+        if(simpleStr[i] == '#'){
+            ++counter;
+            continue;
+        }
+        if(simpleStr[i] == '\n'){
+            res += counter > 0 ? numToStr(counter): "";
+            counter = 0;
+            res += "/";
+            continue;
+        }
+
+        res += counter > 0 ? numToStr(counter): "";
+        counter = 0;
+        res += simpleStr[i];
+    }
+
+    return res;
+}
+void Board::buildFromFen(const std::string & fen){
+
+}
+
+Board::Board():  _moveCount(0), _enPassantIdx(0), _castling(0b11110000), _halfMoveCount(0), _currPlayer(White){
     _pieces[White][Pawn-1] =    0b0000000000000000000000000000000000000000000000001111111100000000;
     _pieces[White][Knight-1] =  0b0000000000000000000000000000000000000000000000000000000001000010;
     _pieces[White][Bishop-1] =  0b0000000000000000000000000000000000000000000000000000000000100100;
@@ -357,7 +418,4 @@ Board::Board(){
     _blacks = _pieces[Black][Pawn-1] | _pieces[Black][Knight-1] | _pieces[Black][Bishop-1] | _pieces[Black][Rook-1] | _pieces[Black][Queen-1] | _pieces[Black][King-1];
     _occupied = _whites | _blacks;
     _free = ~_occupied;
-
-    _enPassantIdx = 0;
-    _castling = 0b11110000;
 }

@@ -53,6 +53,9 @@ private:
     Player* ownerAt(int x, int y) const;
     void FENtoBoard(const std::string& fen);
     char pieceNotation(int x, int y) const;
+    void boardToGrid();
+
+    void handleMoveResult(Bit &bit, BitHolder &src, BitHolder &dst, MoveResults r);
 
 
     

@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <string>
 #include "bitops.h"
 #include "ChessVals.h"
 #include "C:\Libraries\imgui\logger\logger.h"
@@ -19,9 +20,9 @@ public:
     bool            pieceExists(uint8_t idx);
 
 
-    uint8_t            movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
-    uint8_t            movePiece(PieceIdentity identity, uint8_t srcIdx, uint8_t dstIdx) {return movePiece(identity.color, identity.piece, srcIdx, dstIdx);}
-    uint8_t            movePiece(uint8_t srcIdx, uint8_t dstIdx);
+    MoveResults     movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
+    MoveResults     movePiece(PieceIdentity identity, uint8_t srcIdx, uint8_t dstIdx) {return movePiece(identity.color, identity.piece, srcIdx, dstIdx);}
+    MoveResults     movePiece(uint8_t srcIdx, uint8_t dstIdx);
 
     uint64_t        getMoves(Color color, ChessPiece piece, uint8_t idx);
     uint64_t        getMoves(PieceIdentity identity, uint8_t idx) {return getMoves(identity.color, identity.piece, idx);}
@@ -35,9 +36,13 @@ public:
     static bool     canPieceMoveFromTo(uint64_t moves, uint8_t dstIdx){return moves & setBit(0ULL, dstIdx, true);}
     static bool     canPieceMoveFromTo(uint64_t moves, uint64_t dst){return moves & dst;}
 
-    
+    std::string toString();
+    std::string getFen();
+    void buildFromFen(const std::string & fen);
 
+    
     Board();
+    Board(const std::string & fen);
 
 
 
@@ -51,8 +56,14 @@ private:
     uint64_t _whites;
     uint64_t _blacks;
 
+    uint32_t _moveCount;
     uint8_t _enPassantIdx;
     uint8_t _castling;
+    
+    uint8_t _halfMoveCount;
+    Color _currPlayer;
+
+
 
     uint64_t&        accessBitBoard(Color color, ChessPiece piece){return _pieces[color][piece-1];}
     uint64_t&        accessOccupancy(Color color)   {switch(color){case White: return _whites; case Black: return _blacks; default: return _whites;}}
@@ -76,7 +87,7 @@ private:
 
 
     
-    void handleMoveSideEffect(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
+    MoveResults handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
 
 
 };
