@@ -50,6 +50,7 @@ enum MoveResults: uint8_t{\
     CastleWR,
     CastleBL,
     CastleBR,
+    Promotion,
     Check,
     Mate
 };
@@ -72,3 +73,27 @@ inline constexpr std::array<uint64_t, 16> UTIL_BOARDS = makeUtilBoards();
 
 inline constexpr std::array<char, 7> WPIECES = { '0', 'P','N','B','R','Q','K' };
 inline constexpr std::array<char, 7> BPIECES = { '0', 'p','n','b','r','q','k' };
+
+
+
+inline ChessPiece charToPieceFunc(const char p){
+    switch((p >= 97? p - 32: p)){
+        case '0':
+            return NoPiece;
+        case 'P':
+            return Pawn;
+        case 'N':
+            return Knight;
+        case 'B':
+            return Bishop;
+        case 'R':
+            return Rook;
+        case 'Q':
+            return Queen;
+
+        case 'K':
+            return King;        
+    }
+
+    return NoPiece;
+}

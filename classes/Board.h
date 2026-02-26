@@ -36,6 +36,9 @@ public:
     static bool     canPieceMoveFromTo(uint64_t moves, uint8_t dstIdx){return moves & setBit(0ULL, dstIdx, true);}
     static bool     canPieceMoveFromTo(uint64_t moves, uint64_t dst){return moves & dst;}
 
+    static std::string idxToBoardCord(uint8_t idx);
+    static uint8_t     boardCordToIdx(char l, char n);
+
     std::string toString();
     std::string getFen();
     void buildFromFen(const std::string & fen);
@@ -43,6 +46,8 @@ public:
     
     Board();
     Board(const std::string & fen);
+
+    Color getCurrColor(){return _currColor;}
 
 
 
@@ -61,7 +66,7 @@ private:
     uint8_t _castling;
     
     uint8_t _halfMoveCount;
-    Color _currPlayer;
+    Color _currColor;
 
 
 
@@ -87,7 +92,9 @@ private:
 
 
     
-    MoveResults handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
+    void handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
+
+    MoveResults handleSpecialMove(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx, uint64_t newPiecePos, uint64_t oldPiecePos);
 
 
 };

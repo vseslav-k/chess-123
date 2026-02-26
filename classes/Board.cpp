@@ -15,16 +15,15 @@ PieceIdentity Board::determinePiece(uint8_t idx){
     return PieceIdentity();
 }
 
-MoveResults Board::handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
+void Board::handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
     //if moving pawn twice, record enpassant
     if(piece == Pawn){
+        _halfMoveCount = 0;
         if(srcIdx + 16 == dstIdx){
             _enPassantIdx = srcIdx + 8;
-            return EnPassant;
         }
         else if(srcIdx - 16 == dstIdx){
             _enPassantIdx = srcIdx -8;
-            return EnPassant;
         }
         else{
             _enPassantIdx = 0;
@@ -62,7 +61,6 @@ MoveResults Board::handleMoveResult(Color color, ChessPiece piece, uint8_t srcId
         }
     }
 
-    return Legal;
 }
 
 
@@ -92,30 +90,58 @@ bool Board::pieceExists(uint8_t idx){
     return pieceExists(identity.color, identity.piece, idx);
 }
 
-MoveResults Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
-    uint64_t moves = getMoves(color, piece, srcIdx);
-    uint64_t newPiecePos = setBit(0ULL, dstIdx, true);
-    if(!canPieceMoveFromTo(moves, newPiecePos)) return Illegal;
-
-
-    PieceIdentity dstPiece = determinePiece(dstIdx);
-    uint8_t moveRes = Legal;
-
-    if(color != dstPiece.color && dstPiece.piece != NoPiece) [[likely]]
-        updateBitBoards(dstPiece.color , dstPiece.piece, newPiecePos, 0ULL);
-
-    if(dstIdx == _enPassantIdx && piece == Pawn) [[unlikely]]{
+MoveResults Board::handleSpecialMove(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx, uint64_t newPiecePos, uint64_t oldPiecePos){
+    
+    if(piece == Pawn && dstIdx == _enPassantIdx) [[unlikely]]{
+        _halfMoveCount = 0;
         updateBitBoards(!color , Pawn, newPiecePos<<8, 0ULL);
         updateBitBoards(!color , Pawn, newPiecePos>>8, 0ULL);
         //log(Info, "Pawn BB:"+ numToStrBin(getBitBoard(!color, Pawn)));
-        ++moveRes;
+        return EnPassant;
     }
+
+    
+    if(piece == King && pieceExists(color, Rook, dstIdx)){
+        if(srcIdx > dstIdx){
+            updateBitBoards(color , Rook, oldPiecePos<<4, oldPiecePos<<1);
+            updateBitBoards(color , Rook, oldPiecePos, oldPiecePos<<2);
+            return static_cast<MoveResults>(3 + 2 * color);
+        }else{
+            updateBitBoards(color , Rook, oldPiecePos>>3, oldPiecePos>>1);
+            updateBitBoards(color , Rook, oldPiecePos, oldPiecePos>>2);
+            return static_cast<MoveResults>(4 + 2 * color);
+        }
+    }
+    return Legal;
+}
+
+MoveResults Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
+    uint64_t moves = getMoves(color, piece, srcIdx);
+    uint64_t newPiecePos = setBit(0ULL, dstIdx, true);
+    uint64_t oldPiecePos = setBit(0ULL, srcIdx, true);
+    if(!canPieceMoveFromTo(moves, newPiecePos)) return Illegal;
+
+
+
+    PieceIdentity dstPiece = determinePiece(dstIdx);
+    MoveResults moveRes = Legal;
+
+
+    ++_halfMoveCount;
+
+    //capture
+    if(color != dstPiece.color && dstPiece.piece != NoPiece) {
+        _halfMoveCount = 0;
+         updateBitBoards(dstPiece.color , dstPiece.piece, newPiecePos, 0ULL); 
+    }
+
+    moveRes = handleSpecialMove(color, piece, srcIdx, dstIdx, newPiecePos, oldPiecePos);
         
     updateBitBoards(color, piece, setBit(0ULL, srcIdx, true), newPiecePos);
-    
+    _currColor = !_currColor;
+    ++_moveCount;
     handleMoveResult(color, piece, srcIdx, dstIdx);
-
-    return static_cast<MoveResults>(moveRes);
+    return moveRes;
 }
 
 MoveResults Board::movePiece(uint8_t srcIdx, uint8_t dstIdx){
@@ -393,13 +419,149 @@ std::string Board::getFen(){
         res += simpleStr[i];
     }
 
+    res += _currColor == White? " w ":" b ";
+    
+    std::string castlingStr = "";
+    if(getBit(_castling, 0)) castlingStr += "Q";
+    if(getBit(_castling, 1)) castlingStr += "K";
+    if(getBit(_castling, 2)) castlingStr += "q";
+    if(getBit(_castling, 3)) castlingStr += "k";
+
+    res += castlingStr == ""? "-":castlingStr;
+
+    res += ' ';
+    res += _enPassantIdx != 0? idxToBoardCord(_enPassantIdx): "-";
+    res += ' ';
+    res += numToStr(_halfMoveCount);
+    res += ' ';
+    res += numToStr(_moveCount);
+
     return res;
 }
 void Board::buildFromFen(const std::string & fen){
 
+    _pieces[White][Pawn-1] =    0ULL;
+    _pieces[White][Knight-1] =  0ULL;
+    _pieces[White][Bishop-1] =  0ULL;
+    _pieces[White][Rook-1] =    0ULL;
+    _pieces[White][Queen-1] =   0ULL;
+    _pieces[White][King-1] =    0ULL;
+
+    _pieces[Black][Pawn-1] =    0ULL;
+    _pieces[Black][Knight-1] =  0ULL;
+    _pieces[Black][Bishop-1] =  0ULL;
+    _pieces[Black][Rook-1] =    0ULL;
+    _pieces[Black][Queen-1] =   0ULL;
+    _pieces[Black][King-1] =    0ULL;
+    _enPassantIdx = 0;
+    _currColor = White;
+    _castling = 0;
+    _halfMoveCount = 0;
+    _moveCount = 0;
+
+
+    int i = 0;
+    int j = 0;
+    for(char c : fen){
+        ++j;
+
+        if(c == '/') continue;
+        if(c == ' ') break;
+
+        if('1' <= c && c <= '8'){
+            i += (c -'0');
+            continue;
+        }
+
+        ChessPiece p = charToPieceFunc(c);
+        Color col = static_cast<Color>(c > 'a');
+
+        setBitInPlace(accessBitBoard(col, p), i, 1);
+
+        ++i;
+    }
+
+    _whites = _pieces[White][Pawn-1] | _pieces[White][Knight-1] | _pieces[White][Bishop-1] | _pieces[White][Rook-1] | _pieces[White][Queen-1] | _pieces[White][King-1];
+    _blacks = _pieces[Black][Pawn-1] | _pieces[Black][Knight-1] | _pieces[Black][Bishop-1] | _pieces[Black][Rook-1] | _pieces[Black][Queen-1] | _pieces[Black][King-1];
+    _occupied = _whites | _blacks;
+    _free = ~_occupied;
+
+    for(int i = j; i <fen.length(); ++i){
+        j=i;
+        switch(fen[i]){
+
+            case ' ': continue;
+            case '-': continue;
+            case 'w':
+                _currColor = White;
+                continue;
+            case 'b':
+                _currColor = Black;
+                continue;
+            case 'Q':
+                setBitInPlace(_castling, 0, 1);
+                continue;
+            case 'K':
+                setBitInPlace(_castling, 1, 1);
+                continue;
+            case 'q':
+                setBitInPlace(_castling, 2, 1);
+                continue;
+            case 'k':
+                setBitInPlace(_castling, 3, 1);
+                continue;
+        }
+
+        if(('0' <= fen[i] && fen[i] <= '9') 
+        || ('a' <= fen[i] && fen[i] <= 'h' && i+1 < fen.length())){
+            break;
+        }
+    }
+
+
+
+    if(('a' <= fen[j] && fen[j] <= 'h' && j+1 < fen.length())){
+
+        _enPassantIdx = boardCordToIdx(fen[j], fen[j+1]);
+        j+=3;
+    }
+
+
+
+
+
+
+    if(j >= fen.length()) return;
+    if(!('0' <= fen[j] && fen[j] <= '9')) return;
+
+    std::string turns = fen.substr(j);
+    size_t spaceIdx = turns.find(' ');
+
+    spaceIdx = spaceIdx != std::string::npos? spaceIdx: turns.length();
+
+    _halfMoveCount = std::stoi(turns.substr(0, spaceIdx));
+    if(spaceIdx == turns.length() || spaceIdx == turns.length()-1) return;
+
+    _moveCount = std::stoi(turns.substr(spaceIdx+1));
+
 }
 
-Board::Board():  _moveCount(0), _enPassantIdx(0), _castling(0b11110000), _halfMoveCount(0), _currPlayer(White){
+
+std::string Board::idxToBoardCord(uint8_t idx){
+    std::string res = "";
+    res += ('a' + (idx%8));
+    res += numToStr(8-(idx/8));
+
+    return res;
+}
+uint8_t Board::boardCordToIdx(char l, char n){
+    uint8_t idx = l-'a';
+    idx += (64-8*(n-'0'));
+
+    return idx;
+}
+
+Board::Board():  _moveCount(0), _enPassantIdx(0), _castling(0b11110000), _halfMoveCount(0), _currColor(White){
     _pieces[White][Pawn-1] =    0b0000000000000000000000000000000000000000000000001111111100000000;
     _pieces[White][Knight-1] =  0b0000000000000000000000000000000000000000000000000000000001000010;
     _pieces[White][Bishop-1] =  0b0000000000000000000000000000000000000000000000000000000000100100;
@@ -418,4 +580,8 @@ Board::Board():  _moveCount(0), _enPassantIdx(0), _castling(0b11110000), _halfMo
     _blacks = _pieces[Black][Pawn-1] | _pieces[Black][Knight-1] | _pieces[Black][Bishop-1] | _pieces[Black][Rook-1] | _pieces[Black][Queen-1] | _pieces[Black][King-1];
     _occupied = _whites | _blacks;
     _free = ~_occupied;
+}
+
+Board::Board(const std::string & fen){
+    buildFromFen(fen);
 }

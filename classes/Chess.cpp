@@ -116,13 +116,15 @@ void Chess::setUpBoard()
     _gameOptions.rowY = 8;
 
     _grid->initializeChessSquares(pieceSize, "boardsquare.png");
-    //FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR KkQq");
 
-    boardToGrid();
+    bool playerMismatch = boardToGrid();
     startGame();
+
+    if(playerMismatch) endTurn();
 }
 
-void Chess::boardToGrid(){
+bool Chess::boardToGrid(){
     stopGame();
 
     for(Color c = White; true; c = !c){
@@ -146,6 +148,12 @@ void Chess::boardToGrid(){
         if(c==Black) break;
     }
 
+    if(_board.getCurrColor() != static_cast<Color>(getCurrentPlayer()->playerNumber())){
+        return true;
+    }
+
+     return false;
+
 }
 
 
@@ -161,6 +169,12 @@ void Chess::FENtoBoard(const std::string& fen) {
     // 4: en passant target square (in algebraic notation, or -)
     // 5: halfmove clock (number of halfmoves since the last capture or pawn advance)
 
+
+
+    _board.buildFromFen(fen);
+
+
+    /*
     int i = 0;
 
     for(char c : fen){
@@ -180,8 +194,7 @@ void Chess::FENtoBoard(const std::string& fen) {
 
         ++i;
     }
-
-
+    */
 }
 
 bool Chess::actionForEmptyHolder(BitHolder &holder)
