@@ -78,3 +78,13 @@
 30	1322	7938014725743050	CMakeFiles/demo.dir/classes/Chess.cpp.obj	c65955be4ffd0cb2
 26	1376	7938014725693359	CMakeFiles/demo.dir/Application.cpp.obj	a9fff8f014ff88ba
 1376	1533	7938014739192594	demo.exe	929eb76151ef9355
+14	1012	7939482705590618	CMakeFiles/demo.dir/classes/Board.cpp.obj	543dcc0502868ead
+11	1298	7939482705551540	CMakeFiles/demo.dir/classes/Chess.cpp.obj	c65955be4ffd0cb2
+1298	1510	7939482718428156	demo.exe	929eb76151ef9355
+18	1333	7939487404643461	CMakeFiles/demo.dir/classes/Chess.cpp.obj	c65955be4ffd0cb2
+1334	1486	7939487417797510	demo.exe	929eb76151ef9355
+26	1331	7939488545875443	CMakeFiles/demo.dir/classes/Chess.cpp.obj	c65955be4ffd0cb2
+22	1343	7939488545826619	CMakeFiles/demo.dir/Application.cpp.obj	a9fff8f014ff88ba
+1343	1498	7939488559048960	demo.exe	929eb76151ef9355
+23	1325	7939488807995000	CMakeFiles/demo.dir/classes/Chess.cpp.obj	c65955be4ffd0cb2
+1325	1477	7939488821027912	demo.exe	929eb76151ef9355

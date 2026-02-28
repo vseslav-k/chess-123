@@ -116,15 +116,13 @@ void Chess::setUpBoard()
     _gameOptions.rowY = 8;
 
     _grid->initializeChessSquares(pieceSize, "boardsquare.png");
-    FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR KkQq");
+    FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq");
 
-    bool playerMismatch = boardToGrid();
+    boardToGrid();
     startGame();
-
-    if(playerMismatch) endTurn();
 }
 
-bool Chess::boardToGrid(){
+void Chess::boardToGrid(){
     stopGame();
 
     for(Color c = White; true; c = !c){
@@ -147,13 +145,6 @@ bool Chess::boardToGrid(){
     
         if(c==Black) break;
     }
-
-    if(_board.getCurrColor() != static_cast<Color>(getCurrentPlayer()->playerNumber())){
-        return true;
-    }
-
-     return false;
-
 }
 
 
@@ -204,7 +195,10 @@ bool Chess::actionForEmptyHolder(BitHolder &holder)
 }
 
 bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
-{
+{   
+
+    bool playerMismatch = _board.getCurrColor() != getCurrentPlayer()->playerNumber();
+    if(playerMismatch) endTurn();
     return( (getCurrentPlayer()->playerNumber() == 0 && bit.gameTag() < 7) || (getCurrentPlayer()->playerNumber() == 1 && bit.gameTag() >= 7) );
 
 
