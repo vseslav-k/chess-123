@@ -102,15 +102,15 @@ MoveResults Board::handleSpecialMove(Color color, ChessPiece piece, uint8_t srcI
     }
 
     //castling
-    if(piece == King && pieceExists(color, Rook, dstIdx)){
+    if(piece == King && pieceExists(color, Rook, dstIdx) && abs(srcIdx-dstIdx) == 2){
 
-        if(srcIdx > dstIdx && getBit(_castling, 0+2*color)){
+        if(srcIdx > dstIdx){
             updateBitBoards(color, Rook, oldPiecePos<<4, oldPiecePos<<1);
             updateBitBoards(color, King, oldPiecePos, oldPiecePos<<2);
             return static_cast<MoveResults>(3 + 2 * color);
     
         }
-        if(srcIdx < dstIdx && getBit(_castling, 1+2*color)){
+        if(srcIdx < dstIdx ){
             updateBitBoards(color , Rook, oldPiecePos>>3, oldPiecePos>>1);
             updateBitBoards(color , Rook, oldPiecePos, oldPiecePos>>2);
             return static_cast<MoveResults>(4 + 2 * color);
@@ -281,6 +281,14 @@ uint64_t Board::getMovesKingWhite(uint8_t idx){
 
     moves &= ~me;
     moves &= ~_whites;
+
+    moves |= 
+    getBit(_castling, 0) * getBit(_occupied, 57)* getBit(_occupied, 58)* getBit(_occupied, 59) * 
+    me << 2;
+
+    moves |= 
+    getBit(_castling, 1) * getBit(_occupied, 62)* getBit(_occupied, 61)*
+    me >> 2;
 
     return moves;
 }
