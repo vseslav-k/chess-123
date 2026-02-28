@@ -92,6 +92,7 @@ bool Board::pieceExists(uint8_t idx){
 
 MoveResults Board::handleSpecialMove(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx, uint64_t newPiecePos, uint64_t oldPiecePos){
     
+    //en passant
     if(piece == Pawn && dstIdx == _enPassantIdx) [[unlikely]]{
         _halfMoveCount = 0;
         updateBitBoards(!color , Pawn, newPiecePos<<8, 0ULL);
@@ -100,13 +101,16 @@ MoveResults Board::handleSpecialMove(Color color, ChessPiece piece, uint8_t srcI
         return EnPassant;
     }
 
-    
+    //castling
     if(piece == King && pieceExists(color, Rook, dstIdx)){
-        if(srcIdx > dstIdx){
-            updateBitBoards(color , Rook, oldPiecePos<<4, oldPiecePos<<1);
-            updateBitBoards(color , Rook, oldPiecePos, oldPiecePos<<2);
+
+        if(srcIdx > dstIdx && getBit(_castling, 0+2*color)){
+            updateBitBoards(color, Rook, oldPiecePos<<4, oldPiecePos<<1);
+            updateBitBoards(color, King, oldPiecePos, oldPiecePos<<2);
             return static_cast<MoveResults>(3 + 2 * color);
-        }else{
+    
+        }
+        if(srcIdx < dstIdx && getBit(_castling, 1+2*color)){
             updateBitBoards(color , Rook, oldPiecePos>>3, oldPiecePos>>1);
             updateBitBoards(color , Rook, oldPiecePos, oldPiecePos>>2);
             return static_cast<MoveResults>(4 + 2 * color);
@@ -249,6 +253,9 @@ uint64_t Board::getMovesKnightWhite(uint8_t idx){
     moves &= ~((UTIL_BOARDS[Col0] | UTIL_BOARDS[Col1]) * ((idx+1) % 8 == 0 || (idx+2) % 8 == 0));
 
     moves &= ~_whites;
+
+    moves |= getBit(_castling, 0)? 0b000000000000000000000000000000000000000010000000:0; 
+    moves |= getBit(_castling, 1)? 0b000000000000000000000000000000000000000000000001:0; 
 
     return moves;
 }
