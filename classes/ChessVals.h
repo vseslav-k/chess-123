@@ -42,7 +42,7 @@ enum Color: bool{
     Black = 1
 };
 
-enum MoveResults: uint8_t{\
+enum MoveResults: uint8_t{
     Illegal,
     Legal,
     EnPassant,

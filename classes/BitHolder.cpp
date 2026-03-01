@@ -1,5 +1,7 @@
 #include "BitHolder.h"
 #include "Bit.h"
+#include "C:\Libraries\imgui\logger\logger.h"
+
 
 BitHolder::~BitHolder()
 {
@@ -92,4 +94,30 @@ void BitHolder::initHolder(const ImVec2 &position, const ImVec4 &color, const ch
 	setGameTag(0);
 	setBit(nullptr);
 	LoadTextureFromFile(spriteName);
+}
+
+
+Bit* BitHolder::removeBit(){
+
+	if(_bit == nullptr) {
+		log(Error, "BitHolder::removeBit attempting to to remove a nullptr");
+		return nullptr;
+	}
+
+	Bit* bit = _bit;
+	_bit = nullptr;
+	bit->setParent(nullptr);
+
+	return bit;
+}
+
+void BitHolder::emplaceBit(Bit* bit){
+	if(_bit != nullptr) {
+		log(Error, "BitHolder::emplaceBit attempting to to emplace bit into a nonempty holder");
+		return;
+	}
+
+	_bit = bit;
+	_bit->setParent(this);
+	_bit->setPosition(this->getPosition());
 }

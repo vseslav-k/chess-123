@@ -1,6 +1,7 @@
 #include "Chess.h"
 #include <limits>
 #include <cmath>
+#include <utility>
 
 Chess::Chess(): _board()
 {
@@ -191,6 +192,8 @@ void Chess::FENtoBoard(const std::string& fen) {
 bool Chess::actionForEmptyHolder(BitHolder &holder)
 {
     log(Debug, _board.getFen());
+    log(Debug, "\n\n");
+    log(Debug, _board.toString());
     return false;
 }
 
@@ -200,6 +203,7 @@ bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
     bool playerMismatch = _board.getCurrColor() != getCurrentPlayer()->playerNumber();
     if(playerMismatch) endTurn();
     return( (getCurrentPlayer()->playerNumber() == 0 && bit.gameTag() < 7) || (getCurrentPlayer()->playerNumber() == 1 && bit.gameTag() >= 7) );
+
 
 
 
@@ -242,6 +246,34 @@ void Chess::handleMoveResult(Bit &bit, BitHolder &src, BitHolder &dst, MoveResul
                 getHolder(getIdx(dst)-8)->destroyBit();
             }
             return;
+        }
+        case CastleWL:{
+            log(Debug, "CastleWL");
+            Bit *rook = getHolder(56)->removeBit();
+            getHolder(getIdx(dst)+1)->emplaceBit(rook);
+            return;
+
+        }
+        case CastleWR:{
+            log(Debug, "CastleWR");
+            Bit *rook = getHolder(63)->removeBit();
+            getHolder(getIdx(dst)-1)->emplaceBit(rook);
+            return;
+
+        }
+        case CastleBL:{
+            log(Debug, "CastleBL");
+            Bit *rook = getHolder(0)->removeBit();
+            getHolder(getIdx(dst)+1)->emplaceBit(rook);
+            return;
+
+        }
+        case CastleBR:{
+            log(Debug, "CastleBR");
+            Bit *rook = getHolder(7)->removeBit();
+            getHolder(getIdx(dst)-1)->emplaceBit(rook);
+            return;
+
         }
     }
 }

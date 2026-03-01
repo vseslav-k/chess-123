@@ -20,6 +20,8 @@ public:
 	void setBit(Bit *bit);
 	// destroy the current piece, triggering any associated animations
 	void destroyBit();
+	Bit* removeBit();
+	void emplaceBit(Bit* bit);
 	// gametag can be used by games for any purpose
 	const int gameTag() { return _gameTag; };
 	// set the gametag

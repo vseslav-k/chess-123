@@ -39,8 +39,8 @@ void Board::handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint
             setBitInPlace(_castling, 1, 0);
         }
         if(color == Black){
-            setBitInPlace(_castling, 0, 2);
-            setBitInPlace(_castling, 1, 3);
+            setBitInPlace(_castling, 2, 0);
+            setBitInPlace(_castling, 3, 0);
         }
     }
 
@@ -60,6 +60,17 @@ void Board::handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint
             setBitInPlace(_castling, 3, 0);
         }
     }
+
+    if(pieceExists(!color, Rook, dstIdx)){
+        if(dstIdx == 63 || dstIdx == 7){
+            setBitInPlace(_castling, 1+2*color, false);
+        }
+        if(dstIdx == 0 || dstIdx == 56){
+            setBitInPlace(_castling, 0+2*color, false);
+        }
+    }
+        
+
 
 }
 
@@ -102,8 +113,8 @@ MoveResults Board::handleSpecialMove(Color color, ChessPiece piece, uint8_t srcI
     }
 
     //castling
-    if(piece == King && pieceExists(color, Rook, dstIdx) && abs(srcIdx-dstIdx) == 2){
-
+    if(piece == King && abs(srcIdx-dstIdx) == 2)[[unlikely]]{
+        bool castle = true;
         if(srcIdx > dstIdx){
             updateBitBoards(color, Rook, oldPiecePos<<4, oldPiecePos<<1);
             updateBitBoards(color, King, oldPiecePos, oldPiecePos<<2);
@@ -112,7 +123,6 @@ MoveResults Board::handleSpecialMove(Color color, ChessPiece piece, uint8_t srcI
         }
         if(srcIdx < dstIdx ){
             updateBitBoards(color , Rook, oldPiecePos>>3, oldPiecePos>>1);
-            updateBitBoards(color , Rook, oldPiecePos, oldPiecePos>>2);
             return static_cast<MoveResults>(4 + 2 * color);
         }
     }
@@ -279,16 +289,18 @@ uint64_t Board::getMovesKingWhite(uint8_t idx){
     moves |= ((line>>1) & ~UTIL_BOARDS[Col0]);
     moves |= ((line<<1) & ~UTIL_BOARDS[Col7]);
 
-    moves &= ~me;
-    moves &= ~_whites;
 
     moves |= 
-    getBit(_castling, 0) * getBit(_occupied, 57)* getBit(_occupied, 58)* getBit(_occupied, 59) * 
+    getBit(_castling, 0) * getBit(_free, 57)* getBit(_free, 58)* getBit(_free, 59) * 
     me << 2;
 
     moves |= 
-    getBit(_castling, 1) * getBit(_occupied, 62)* getBit(_occupied, 61)*
+    getBit(_castling, 1) * getBit(_free, 62)* getBit(_free, 61)*
     me >> 2;
+
+    moves &= ~me;
+    moves &= ~_whites;
+
 
     return moves;
 }
@@ -375,6 +387,16 @@ uint64_t Board::getMovesKingBlack(uint8_t idx){
     moves |= ((line>>1) & ~UTIL_BOARDS[Col0]);
     moves |= ((line<<1) & ~UTIL_BOARDS[Col7]);
 
+
+
+    moves |= 
+    getBit(_castling, 2) * getBit(_free, 1)* getBit(_free, 2)* getBit(_free, 3) * 
+    me << 2;
+
+    moves |= 
+    getBit(_castling, 3) * getBit(_free, 5)* getBit(_free, 6)*
+    me >> 2;
+
     moves &= ~me;
     moves &= ~_blacks;
 
@@ -423,16 +445,20 @@ std::string Board::getFen(){
             continue;
         }
         if(simpleStr[i] == '\n'){
-            res += counter > 0 ? numToStr(counter): "";
+
+            if(counter > 0) res += numToStr(counter);
             counter = 0;
             res += "/";
             continue;
         }
 
-        res += counter > 0 ? numToStr(counter): "";
+        if(counter > 0) res += numToStr(counter);
         counter = 0;
         res += simpleStr[i];
     }
+
+    if(counter > 0) res += numToStr(counter);
+    counter = 0;
 
     res += _currColor == White? " w ":" b ";
     

@@ -104,3 +104,5 @@ void Bit::update()
 		_moving = false;
 	}
 }
+
+

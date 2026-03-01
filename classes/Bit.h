@@ -55,6 +55,7 @@ public:
 	void setOpacity(float opacity){};
 	bool getMoving() { return _moving; };
 
+
 private:
 	int _restingZ;
 	float _restingTransform;
