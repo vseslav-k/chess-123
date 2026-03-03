@@ -264,9 +264,6 @@ uint64_t Board::getMovesKnightWhite(uint8_t idx){
 
     moves &= ~_whites;
 
-    moves |= getBit(_castling, 0)? 0b000000000000000000000000000000000000000010000000:0; 
-    moves |= getBit(_castling, 1)? 0b000000000000000000000000000000000000000000000001:0; 
-
     return moves;
 }
 uint64_t Board::getMovesBishopWhite(uint8_t idx){
