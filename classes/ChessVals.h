@@ -3,8 +3,15 @@
 #include <array>
 #include "C:\Libraries\imgui\logger\logger.h"
 
-inline constexpr std::array<uint64_t, 16> makeUtilBoards(){
-    std::array<uint64_t, 16> utilBoards = {};
+
+enum UtilBoardsIdx: uint8_t{
+    Row7=0, Row6=1, Row5=2, Row4=3, Row3=4, Row2=5, Row1=6, Row0=7,
+    Col0=8, Col1=9, Col2=10, Col3=11, Col4=12, Col5=13, Col6=14, Col7=15,
+    Edges=16
+};
+
+inline constexpr std::array<uint64_t, 17> makeUtilBoards(){
+    std::array<uint64_t, 17> utilBoards = {};
 
     utilBoards[0] = 0b1111111100000000000000000000000000000000000000000000000000000000;
 
@@ -17,14 +24,11 @@ inline constexpr std::array<uint64_t, 16> makeUtilBoards(){
     }
 
 
+    utilBoards[Edges] = utilBoards[Col0] | utilBoards[Col7] | utilBoards[Row0] | utilBoards[Row7];
+
 
     return utilBoards;
 }
-
-enum UtilBoardsIdx: uint8_t{
-    Row7=0, Row6=1, Row5=2, Row4=3, Row3=4, Row2=5, Row1=6, Row0=7,
-    Col0=8, Col1=9, Col2=10, Col3=11, Col4=12, Col5=13, Col6=14, Col7=15
-};
 
 enum ChessPiece: uint8_t
 {
@@ -65,11 +69,11 @@ struct PieceIdentity{
     ChessPiece piece;
 
     PieceIdentity(Color c = White, ChessPiece p = NoPiece): color{c}, piece{p}{}
-    PieceIdentity(uint8_t c, uint8_t p): color{static_cast<Color>(c)}, piece{static_cast<Color>(p)}{}
+    PieceIdentity(uint8_t c, uint8_t p): color{static_cast<Color>(c)}, piece{static_cast<ChessPiece>(p)}{}
 };
 
 
-inline constexpr std::array<uint64_t, 16> UTIL_BOARDS = makeUtilBoards();
+inline constexpr std::array<uint64_t, 17> UTIL_BOARDS = makeUtilBoards();
 
 inline constexpr std::array<char, 7> WPIECES = { '0', 'P','N','B','R','Q','K' };
 inline constexpr std::array<char, 7> BPIECES = { '0', 'p','n','b','r','q','k' };
