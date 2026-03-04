@@ -267,13 +267,52 @@ uint64_t Board::getMovesKnightWhite(uint8_t idx){
     return moves;
 }
 uint64_t Board::getMovesBishopWhite(uint8_t idx){
-    return UINT64_MAX;
+    uint64_t me = setBit(0ULL, idx, 1);
+
+
+    uint64_t diaD = getDiaD(idx);
+    uint64_t diaI = getDiaI(idx);
+
+    uint64_t occDD= diaD & _occupied;
+    uint64_t occDI = diaI & _occupied;
+
+    uint64_t NEattack = occDI -(me<<1);
+    uint64_t SEattack = occDD -(me<<1);
+
+    uint64_t SWattack = reverse(reverse(occDI) -2*reverse(me));
+    uint64_t NWattack = reverse(reverse(occDD) -2*reverse(me));
+
+    uint64_t moves = ((NEattack^SWattack)&diaI)|((NWattack^SEattack)&diaD);
+
+    moves &= ~_whites;
+
+    return moves;
 }
 uint64_t Board::getMovesRookWhite(uint8_t idx){
-    return UINT64_MAX;
+    uint64_t me = setBit(0ULL, idx, 1);
+
+
+    uint64_t row = UTIL_BOARDS[Row7+idx/8];
+    uint64_t col = UTIL_BOARDS[Col0+idx%8];
+
+    uint64_t occRow = row & _occupied;
+    uint64_t occCol = col & _occupied;
+
+    uint64_t fAttack = occCol -(me<<1);
+    uint64_t rAttack = occRow -(me<<1);
+
+    uint64_t bAttack = reverse(reverse(occCol) -(reverse(me)<<1));
+    uint64_t lAttack = reverse(reverse(occRow) -(reverse(me)<<1));
+
+    uint64_t moves = ((fAttack^bAttack)&col)|((lAttack^rAttack)&row);
+
+    moves &= ~_whites;
+
+    return moves;
 }
+
 uint64_t Board::getMovesQueenWhite(uint8_t idx){
-    return UINT64_MAX;
+    return getMovesBishopWhite(idx) | getMovesRookWhite(idx);
 }
 uint64_t Board::getMovesKingWhite(uint8_t idx){
     uint64_t me = setBit(0ULL, idx, 1);
@@ -365,13 +404,52 @@ uint64_t Board::getMovesKnightBlack(uint8_t idx){
     return moves;
 }
 uint64_t Board::getMovesBishopBlack(uint8_t idx){
-    return UINT64_MAX;
+    uint64_t me = setBit(0ULL, idx, 1);
+
+
+    uint64_t diaD = getDiaD(idx);
+    uint64_t diaI = getDiaI(idx);
+
+    uint64_t occDD= diaD & _occupied;
+    uint64_t occDI = diaI & _occupied;
+
+    uint64_t NEattack = occDI -(me<<1);
+    uint64_t SEattack = occDD -(me<<1);
+
+    uint64_t SWattack = reverse(reverse(occDI) -2*reverse(me));
+    uint64_t NWattack = reverse(reverse(occDD) -2*reverse(me));
+
+    uint64_t moves = ((NEattack^SWattack)&diaI)|((NWattack^SEattack)&diaD);
+
+    moves &= ~_blacks;
+
+    return moves;
 }
 uint64_t Board::getMovesRookBlack(uint8_t idx){
-    return UINT64_MAX;
+    uint64_t me = setBit(0ULL, idx, 1);
+
+
+    uint64_t row = UTIL_BOARDS[Row7+idx/8];
+    uint64_t col = UTIL_BOARDS[Col0+idx%8];
+
+    uint64_t occRow = row & _occupied;
+    uint64_t occCol = col & _occupied;
+
+    uint64_t fAttack = occCol -(me<<1);
+    uint64_t rAttack = occRow -(me<<1);
+
+    uint64_t bAttack = reverse(reverse(occCol) -2*reverse(me));
+    uint64_t lAttack = reverse(reverse(occRow) -2*reverse(me));
+
+    uint64_t moves = ((fAttack^bAttack)&col)|((lAttack^rAttack)&row);
+
+    moves &= ~_blacks;
+
+    return moves;
 }
 uint64_t Board::getMovesQueenBlack(uint8_t idx){
-    return UINT64_MAX;
+    return getMovesBishopBlack(idx) | getMovesRookBlack(idx);
+
 }
 uint64_t Board::getMovesKingBlack(uint8_t idx){
     uint64_t me = setBit(0ULL, idx, 1);
