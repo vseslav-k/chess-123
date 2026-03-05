@@ -7,6 +7,8 @@ Full Fen support
 
 Custom board class to keep all my bitboards organized and easy to manipulate
 
+added sliding piece movement
+
 Currently Missing:
-Sliding piece movement. Planning to implement via magic bitboards or smart bitwise operations
+
 AI
