@@ -126,6 +126,12 @@ MoveResults Board::handleSpecialMove(Color color, ChessPiece piece, uint8_t srcI
             return static_cast<MoveResults>(4 + 2 * color);
         }
     }
+    //promotion
+    if(piece == Pawn && (dstIdx >= 56 || dstIdx <= 7)){
+        updateBitBoards(color, Pawn, newPiecePos, 0ULL);
+        updateBitBoards(color, Queen, 0ULL, newPiecePos);
+        return Promotion;
+    }
     return Legal;
 }
 
@@ -151,7 +157,7 @@ MoveResults Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint
 
     moveRes = handleSpecialMove(color, piece, srcIdx, dstIdx, newPiecePos, oldPiecePos);
         
-    updateBitBoards(color, piece, setBit(0ULL, srcIdx, true), newPiecePos);
+    updateBitBoards(color, piece, oldPiecePos, newPiecePos);
     _currColor = !_currColor;
     ++_moveCount;
     handleMoveResult(color, piece, srcIdx, dstIdx);

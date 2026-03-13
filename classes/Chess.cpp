@@ -275,6 +275,16 @@ void Chess::handleMoveResult(Bit &bit, BitHolder &src, BitHolder &dst, MoveResul
             return;
 
         }
+
+        case Promotion:{
+            log(Debug, "Promotion");
+
+            Color currCol = static_cast<Color>(dst.bit()->gameTag() > 7);
+            dst.destroyBit();
+            Bit *newQueen = PieceForPlayer(currCol, Queen);
+            dst.emplaceBit(newQueen);
+            return;
+        }
     }
 }
 
