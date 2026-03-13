@@ -1,6 +1,6 @@
 #include "Board.h"
 
-PieceIdentity Board::determinePiece(uint8_t idx){
+PieceIdentity Board::determinePiece(uint8_t idx) const{
 
     for(uint8_t color = 0; color < 2; ++color){
         for(uint8_t piece = 1; piece < 7; ++piece){
@@ -91,12 +91,12 @@ void Board::updateBitBoards(Color color, ChessPiece piece, uint64_t oldPiecePos,
     _free = ~_occupied;
 }
 
-bool Board::pieceExists(Color color, ChessPiece piece, uint8_t idx){
+bool Board::pieceExists(Color color, ChessPiece piece, uint8_t idx) const{
     return getBit(getBitBoard(color, piece), idx);
 }
 
 
-bool Board::pieceExists(uint8_t idx){
+bool Board::pieceExists(uint8_t idx) const{
     PieceIdentity identity = determinePiece(idx);
     return pieceExists(identity.color, identity.piece, idx);
 }
@@ -168,7 +168,7 @@ MoveResults Board::movePiece(uint8_t srcIdx, uint8_t dstIdx){
     return movePiece(identity.color, identity.piece,srcIdx,dstIdx);
 }
 
-uint64_t Board::getMoves(Color color, ChessPiece piece, uint8_t idx){
+uint64_t Board::getMoves(Color color, ChessPiece piece, uint8_t idx) const{
     switch(color){
         case White:
             switch(piece){
@@ -193,23 +193,81 @@ uint64_t Board::getMoves(Color color, ChessPiece piece, uint8_t idx){
     return 0;
 }
 
-uint64_t Board::getMoves(uint8_t idx){
+uint64_t Board::getMoves(uint8_t idx) const{
     PieceIdentity identity = determinePiece(idx);
     return getMoves(identity.color, identity.piece, idx);
 }
 
-bool Board::detectCheck(Color color){
+bool Board::detectCheck(Color color, uint8_t idx){
     return false;
+}
+
+bool Board::detectMate(Color color, uint8_t idx){
+    uint64_t kingMoves = color? getMovesKingBlack(idx):getMovesKingWhite(idx);
+
+    return detectCheck(color, idx) && std::popcount(kingMoves) == 0;
+}
+
+
+bool Board::detectCheck(Color color){
+
+    
+
+    return detectCheck(color, std::countl_zero(getBitBoard(color, King)));
+    
+    /*std::string colorString = static_cast<bool>(color)? "black" : "white";
+    log(Error, "Error in detectCheck: No " + colorString + " king exists");
+    return false;*/
 }
 
 bool Board::detectMate(Color color){
-    return false;
+
+    return detectMate(color, std::countl_zero(getBitBoard(color, King)));
+    
+    /*std::string colorString = static_cast<bool>(color)? "black" : "white";
+    log(Error, "Error in detectMate: No " + colorString + " king exists");
+    return false;*/
 }
 
 
 
 
-uint64_t Board::getMovesPawnWhite(uint8_t idx){
+
+std::vector<ChessMove> Board::getAllMoves(Color color) const{
+
+    std::vector<ChessMove> result;
+    result.reserve(256);
+
+    for(ChessPiece piece = King; piece > NoPiece; piece = static_cast<ChessPiece>(piece -1)){
+        uint64_t pieceBB = getBitBoard(color, piece);
+
+        for(uint8_t i = nextSetBit(pieceBB); i < 64; i = nextSetBit(pieceBB)){
+            uint64_t movesBB = getMoves(color, piece, i);
+
+            for(uint8_t j = nextSetBit(movesBB); j  < 64; j = nextSetBit(movesBB)){
+                ChessPiece capturePiece = NoPiece;
+                for(ChessPiece capPiece = King; capPiece > NoPiece; capPiece = static_cast<ChessPiece>(capPiece -1)){
+                    if(pieceExists(!color, capPiece, j)){
+                        capturePiece = capPiece;
+                        break;
+                    }
+                }
+
+                result.emplace_back(ChessMove(color, piece, i, j, capturePiece));
+            }
+        }
+    }
+
+    std::sort(result.begin(), result.end());
+    std::reverse(result.begin(), result.end());
+
+    return result;
+}
+
+
+
+
+uint64_t Board::getMovesPawnWhite(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
     uint64_t moves = 0;
 
@@ -246,7 +304,7 @@ uint64_t Board::getMovesPawnWhite(uint8_t idx){
 
     return moves;
 }
-uint64_t Board::getMovesKnightWhite(uint8_t idx){
+uint64_t Board::getMovesKnightWhite(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
     uint64_t moves = 0;
 
@@ -271,7 +329,7 @@ uint64_t Board::getMovesKnightWhite(uint8_t idx){
 
     return moves;
 }
-uint64_t Board::getMovesBishopWhite(uint8_t idx){
+uint64_t Board::getMovesBishopWhite(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
 
 
@@ -293,7 +351,7 @@ uint64_t Board::getMovesBishopWhite(uint8_t idx){
 
     return moves;
 }
-uint64_t Board::getMovesRookWhite(uint8_t idx){
+uint64_t Board::getMovesRookWhite(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
 
 
@@ -316,10 +374,10 @@ uint64_t Board::getMovesRookWhite(uint8_t idx){
     return moves;
 }
 
-uint64_t Board::getMovesQueenWhite(uint8_t idx){
+uint64_t Board::getMovesQueenWhite(uint8_t idx) const{
     return getMovesBishopWhite(idx) | getMovesRookWhite(idx);
 }
-uint64_t Board::getMovesKingWhite(uint8_t idx){
+uint64_t Board::getMovesKingWhite(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
     uint64_t moves = 0;
 
@@ -346,7 +404,7 @@ uint64_t Board::getMovesKingWhite(uint8_t idx){
     return moves;
 }
 
-uint64_t Board::getMovesPawnBlack(uint8_t idx){
+uint64_t Board::getMovesPawnBlack(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
     uint64_t moves = 0;
 
@@ -383,7 +441,7 @@ uint64_t Board::getMovesPawnBlack(uint8_t idx){
     
     return moves;
 }
-uint64_t Board::getMovesKnightBlack(uint8_t idx){
+uint64_t Board::getMovesKnightBlack(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
     uint64_t moves = 0;
 
@@ -408,7 +466,7 @@ uint64_t Board::getMovesKnightBlack(uint8_t idx){
 
     return moves;
 }
-uint64_t Board::getMovesBishopBlack(uint8_t idx){
+uint64_t Board::getMovesBishopBlack(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
 
 
@@ -430,7 +488,7 @@ uint64_t Board::getMovesBishopBlack(uint8_t idx){
 
     return moves;
 }
-uint64_t Board::getMovesRookBlack(uint8_t idx){
+uint64_t Board::getMovesRookBlack(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
 
 
@@ -452,11 +510,11 @@ uint64_t Board::getMovesRookBlack(uint8_t idx){
 
     return moves;
 }
-uint64_t Board::getMovesQueenBlack(uint8_t idx){
+uint64_t Board::getMovesQueenBlack(uint8_t idx) const{
     return getMovesBishopBlack(idx) | getMovesRookBlack(idx);
 
 }
-uint64_t Board::getMovesKingBlack(uint8_t idx){
+uint64_t Board::getMovesKingBlack(uint8_t idx) const{
     uint64_t me = setBit(0ULL, idx, 1);
     uint64_t moves = 0;
 

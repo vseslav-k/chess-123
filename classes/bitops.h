@@ -99,3 +99,12 @@ inline int getBit(uint8_t x, const unsigned int pos) {
     }
     return static_cast<int>((x >> (7 - pos)) & 1);
 }
+
+
+inline uint8_t nextSetBit(uint64_t& x){
+    int idx = std::countl_zero(x);
+
+    
+    setBitInPlace(x, idx%64, 0);
+    return idx;
+}

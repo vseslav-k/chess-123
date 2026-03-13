@@ -39,6 +39,8 @@ uint8_t Chess::getIdx(BitHolder *target){
         for(int j = 0; j < 8; ++j)
             if(static_cast<BitHolder*>(_grid->getSquare(i, j)) == target)
                 return cordsToIdx({i,j});
+    log(Error, "Chess::getIdx holder idx not found");
+    return 255;
 }
 
 ChessPiece Chess::charToPiece(const char p){
@@ -194,6 +196,9 @@ bool Chess::actionForEmptyHolder(BitHolder &holder)
     log(Debug, _board.getFen());
     log(Debug, "\n\n");
     log(Debug, _board.toString());
+
+    std::vector<ChessMove> allMoves = _board.getAllMoves(_board.getCurrColor());
+
     return false;
 }
 

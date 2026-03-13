@@ -81,6 +81,7 @@ enum ChessPiece: uint8_t
     King
 };
 
+
 enum Color: bool{
     White = 0,
     Black = 1
