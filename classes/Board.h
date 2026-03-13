@@ -7,6 +7,7 @@
 #include <algorithm> 
 #include "C:\Libraries\imgui\logger\logger.h"
 struct ChessMove;
+struct BoardBackup;
 
 class Board{
 public:
@@ -22,10 +23,14 @@ public:
     bool            pieceExists(Color color, ChessPiece piece, uint8_t idx) const;
     bool            pieceExists(uint8_t idx) const;
 
-
+    MoveResults     movePiece(ChessMove move);
     MoveResults     movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
     MoveResults     movePiece(PieceIdentity identity, uint8_t srcIdx, uint8_t dstIdx) {return movePiece(identity.color, identity.piece, srcIdx, dstIdx);}
     MoveResults     movePiece(uint8_t srcIdx, uint8_t dstIdx);
+
+
+    BoardBackup makeBackup() const;
+    void undoMove(ChessMove move, BoardBackup backup);
 
     uint64_t        getMoves(Color color, ChessPiece piece, uint8_t idx) const;
     uint64_t        getMoves(PieceIdentity identity, uint8_t idx) const{return getMoves(identity.color, identity.piece, idx);}
@@ -33,9 +38,7 @@ public:
 
     PieceIdentity   determinePiece(uint8_t idx) const;
 
-    bool            detectCheck(Color color, uint8_t idx);
     bool            detectMate(Color color, uint8_t idx);
-
     bool            detectCheck(Color color);
     bool            detectMate(Color color);
 
@@ -56,7 +59,17 @@ public:
     Color getCurrColor(){return _currColor;}
 
 
-    std::vector<ChessMove> getAllMoves(Color color) const;
+    std::vector<ChessMove> getAllMoves(Color color);
+
+    int eval(Color color);
+    bool inMate(const Color col)const;
+    bool inCheck(const Color col)const{return _inCheck[col];}
+
+    bool kingCaptureAvailible(Color col) {return (inCheck(col) && (_currColor != col));}
+    bool detectKingCapture(Color col){return (detectCheck(col) && (_currColor != col));}
+
+    bool getIllegalState() {return (inCheck(White) && !_currColor) || (inCheck(Black) && _currColor);}
+    bool detectIllegalState(){return (detectCheck(White) && !_currColor) || (detectCheck(Black) && _currColor);}
 
 
 
@@ -76,6 +89,8 @@ private:
     
     uint8_t _halfMoveCount;
     Color _currColor;
+
+    std::array<bool, 2> _inCheck;
 
 
 
@@ -121,13 +136,23 @@ struct ChessMove{
 
 
     bool operator>(ChessMove m)const{
-        return static_cast<uint8_t>(capturePiece) > static_cast<uint8_t>(capturePiece);
+        return static_cast<uint8_t>(capturePiece) > static_cast<uint8_t>(m.capturePiece);
     }
     bool operator<(ChessMove m)const{
-        return static_cast<uint8_t>(capturePiece) < static_cast<uint8_t>(capturePiece);
+        return static_cast<uint8_t>(capturePiece) < static_cast<uint8_t>(m.capturePiece);
     }
     bool operator==(ChessMove m)const{
-        return static_cast<uint8_t>(capturePiece) == static_cast<uint8_t>(capturePiece);
+        return static_cast<uint8_t>(capturePiece) == static_cast<uint8_t>(m.capturePiece);
     }
 
+};
+
+
+struct BoardBackup{
+    uint8_t castling;
+    uint8_t enPassant;
+    uint8_t halfMoveCount;
+    std::array<bool, 2> inCheck;
+
+    BoardBackup(uint8_t castle, uint8_t en, uint8_t half, std::array<bool, 2> check): castling{castle}, enPassant{en}, halfMoveCount{half}, inCheck(check){}
 };

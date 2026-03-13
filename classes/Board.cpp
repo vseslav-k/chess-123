@@ -135,38 +135,74 @@ MoveResults Board::handleSpecialMove(Color color, ChessPiece piece, uint8_t srcI
     return Legal;
 }
 
-MoveResults Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
-    uint64_t moves = getMoves(color, piece, srcIdx);
-    uint64_t newPiecePos = setBit(0ULL, dstIdx, true);
-    uint64_t oldPiecePos = setBit(0ULL, srcIdx, true);
+
+MoveResults Board::movePiece(ChessMove move){
+    uint64_t moves = getMoves(move.color, move.piece, move.src);
+    uint64_t newPiecePos = setBit(0ULL, move.dst, true);
+    uint64_t oldPiecePos = setBit(0ULL, move.src, true);
     if(!canPieceMoveFromTo(moves, newPiecePos)) return Illegal;
 
 
 
-    PieceIdentity dstPiece = determinePiece(dstIdx);
+    PieceIdentity dstPiece = PieceIdentity(!move.color, move.capturePiece);
     MoveResults moveRes = Legal;
 
 
     ++_halfMoveCount;
 
     //capture
-    if(color != dstPiece.color && dstPiece.piece != NoPiece) {
+    if(move.color != dstPiece.color && dstPiece.piece != NoPiece) {
         _halfMoveCount = 0;
          updateBitBoards(dstPiece.color , dstPiece.piece, newPiecePos, 0ULL); 
     }
-    updateBitBoards(color, piece, oldPiecePos, newPiecePos);
-    moveRes = handleSpecialMove(color, piece, srcIdx, dstIdx, newPiecePos, oldPiecePos);
+    updateBitBoards(move.color, move.piece, oldPiecePos, newPiecePos);
+    moveRes = handleSpecialMove(move.color, move.piece, move.src, move.dst, newPiecePos, oldPiecePos);
         
     _currColor = !_currColor;
     ++_moveCount;
-    handleMoveResult(color, piece, srcIdx, dstIdx);
+    handleMoveResult(move.color, move.piece, move.src, move.dst);
     return moveRes;
+}
+
+MoveResults Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
+    ChessMove move = ChessMove(color, piece, srcIdx, dstIdx, determinePiece(dstIdx).piece);
+    return movePiece(move);
 }
 
 MoveResults Board::movePiece(uint8_t srcIdx, uint8_t dstIdx){
     PieceIdentity identity = determinePiece(srcIdx);
     return movePiece(identity.color, identity.piece,srcIdx,dstIdx);
 }
+
+
+
+
+
+BoardBackup Board::makeBackup() const{
+    return BoardBackup(_castling, _enPassantIdx, _halfMoveCount, _inCheck);
+}
+void Board::undoMove(ChessMove move, BoardBackup backup){
+    uint64_t newPiecePos = setBit(0ULL, move.dst, true);
+    uint64_t oldPiecePos = setBit(0ULL, move.src, true);
+
+    updateBitBoards(move.color, move.piece, newPiecePos, oldPiecePos);
+
+    if(move.capturePiece != NoPiece){
+        updateBitBoards(!move.color, move.capturePiece, 0ULL, newPiecePos);
+    }
+
+    _halfMoveCount = backup.halfMoveCount;
+    _inCheck = backup.inCheck;
+    _castling = backup.castling;
+    _enPassantIdx = backup.enPassant;
+    
+
+    _currColor = !_currColor;
+    --_moveCount;
+}
+
+
+
 
 uint64_t Board::getMoves(Color color, ChessPiece piece, uint8_t idx) const{
     switch(color){
@@ -198,27 +234,30 @@ uint64_t Board::getMoves(uint8_t idx) const{
     return getMoves(identity.color, identity.piece, idx);
 }
 
-bool Board::detectCheck(Color color, uint8_t idx){
+bool Board::detectCheck(Color color){
+
+    for(ChessPiece p = King; p > NoPiece; p = static_cast<ChessPiece>(p-1)){
+        uint64_t pieceBB = getBitBoard(!color, p);
+        for(uint8_t i = nextSetBit(pieceBB); i < 64; i = nextSetBit(pieceBB)){
+            if((getMoves(!color, p, i) & getBitBoard(color, King)) != 0){
+                _inCheck[color] = true;
+                return true;
+            }
+        }
+    }
+    _inCheck[color] = false;
     return false;
 }
 
 bool Board::detectMate(Color color, uint8_t idx){
     uint64_t kingMoves = color? getMovesKingBlack(idx):getMovesKingWhite(idx);
 
-    return detectCheck(color, idx) && std::popcount(kingMoves) == 0;
+    return detectCheck(color) && std::popcount(kingMoves) == 0;
 }
 
 
-bool Board::detectCheck(Color color){
 
-    
 
-    return detectCheck(color, std::countl_zero(getBitBoard(color, King)));
-    
-    /*std::string colorString = static_cast<bool>(color)? "black" : "white";
-    log(Error, "Error in detectCheck: No " + colorString + " king exists");
-    return false;*/
-}
 
 bool Board::detectMate(Color color){
 
@@ -230,10 +269,41 @@ bool Board::detectMate(Color color){
 }
 
 
+bool Board::inMate(const Color col)const{
+    uint8_t idx =  std::countl_zero(getBitBoard(col, King));
+    uint64_t kingMoves = col? getMovesKingBlack(idx):getMovesKingWhite(idx);
+
+    return inCheck(col) && std::popcount(kingMoves) == 0;
+}
+
+int Board::eval(Color color){
+    int32_t score[] = {0,0};
+
+    for(uint8_t currCol = White; currCol <= Black; currCol++){
+        for(ChessPiece piece = King; piece > NoPiece; piece = static_cast<ChessPiece>(piece -1)){
+            uint64_t pieceBB = getBitBoard(static_cast<Color>(currCol), piece);
+
+            for(uint8_t i = nextSetBit(pieceBB); i < 64; i = nextSetBit(pieceBB)){
+                score[currCol] += (PIECEVAL[piece]*50 + PIECEVAL[piece] * positionMultiplier(color, piece, i));
+            }
+        }
+
+    }
+
+    score[White] -= inCheck(White) * 200;
+    score[White] -= detectMate(White) * MATE;
+
+    score[Black] -= inCheck(Black) * 200;
+    score[Black] -= detectMate(Black) * MATE;
+
+    return (-2*color + 1) * (score[White]-score[Black]);
+}
 
 
 
-std::vector<ChessMove> Board::getAllMoves(Color color) const{
+
+
+std::vector<ChessMove> Board::getAllMoves(Color color){
 
     std::vector<ChessMove> result;
     result.reserve(256);
@@ -243,6 +313,10 @@ std::vector<ChessMove> Board::getAllMoves(Color color) const{
 
         for(uint8_t i = nextSetBit(pieceBB); i < 64; i = nextSetBit(pieceBB)){
             uint64_t movesBB = getMoves(color, piece, i);
+            
+            if((movesBB & getBitBoard(!color, King)) != 0){
+                _inCheck[!color] = true;
+            }
 
             for(uint8_t j = nextSetBit(movesBB); j  < 64; j = nextSetBit(movesBB)){
                 ChessPiece capturePiece = NoPiece;
@@ -759,8 +833,15 @@ Board::Board():  _moveCount(0), _enPassantIdx(0), _castling(0b11110000), _halfMo
     _blacks = _pieces[Black][Pawn-1] | _pieces[Black][Knight-1] | _pieces[Black][Bishop-1] | _pieces[Black][Rook-1] | _pieces[Black][Queen-1] | _pieces[Black][King-1];
     _occupied = _whites | _blacks;
     _free = ~_occupied;
+
+
+    _inCheck[White] = false;
+    _inCheck[Black]  = false;
 }
 
 Board::Board(const std::string & fen){
     buildFromFen(fen);
+
+    _inCheck[White] = false;
+    _inCheck[Black]  = false;
 }

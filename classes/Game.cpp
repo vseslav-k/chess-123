@@ -233,12 +233,15 @@ bool Game::clickedBit(Bit &bit)
 }
 
 bool Game::animateAndPlaceBitFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
-{
+{ 
 	return false;
 }
 
 bool Game::gameHasAI()
 {
+	for(const Player* plr : _players){
+		if(plr->isAIPlayer()) return true;
+	}
 	return false;
 }
 

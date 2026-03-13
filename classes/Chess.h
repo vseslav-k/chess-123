@@ -17,7 +17,7 @@ constexpr int pieceSize = 80;
 class Chess final: public Game
 {
 public:
-    Chess();
+    Chess(int8_t aiNumber = 2);
     ~Chess();
 
     void setUpBoard() override;
@@ -37,6 +37,9 @@ public:
     void setStateString(const std::string &s) override;
 
     Grid* getGrid() override { return _grid; }
+
+
+    void updateAI() override;
 
 private:
 
@@ -66,9 +69,12 @@ private:
     static std::pair<uint8_t, uint8_t> idxToCords(uint8_t idx);
 
 
+    int negamax(const Color color, int a, int b, const int d);
+
+
     /* index cordinates
 
-    00 01 02 03 04 05 06 07
+    00 01 02 03 04 05 06 07s
     08 09 10 11 12 13 14 15
     16 17 18 19 20 21 22 23
     24 25 26 27 28 29 30 31
@@ -94,4 +100,5 @@ private:
     
     Grid* _grid;
     Board _board;
+    int8_t _aiNumber;
 };

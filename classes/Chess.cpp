@@ -3,9 +3,10 @@
 #include <cmath>
 #include <utility>
 
-Chess::Chess(): _board()
+Chess::Chess(int8_t aiNumber): _board()
 {
     _grid = new Grid(8, 8);
+    _aiNumber = aiNumber-1;
 }
 
 Chess::~Chess()
@@ -121,6 +122,15 @@ void Chess::setUpBoard()
     _grid->initializeChessSquares(pieceSize, "boardsquare.png");
     FENtoBoard("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KkQq");
 
+    switch(_aiNumber){
+        case -1: break;
+        case 0: setAIPlayer(White); break;
+        case 1: setAIPlayer(Black); break;
+        case 2: setAIPlayer(White); setAIPlayer(Black); _gameOptions.AIvsAI = true; break;
+    }
+
+    bool gamehasai = gameHasAI();
+
     boardToGrid();
     startGame();
 }
@@ -189,6 +199,73 @@ void Chess::FENtoBoard(const std::string& fen) {
         ++i;
     }
     */
+}
+
+void Chess::updateAI(){
+    Color me = _board.getCurrColor();
+    std::vector<ChessMove> allMoves = _board.getAllMoves(me);
+
+    int bestScore = -MATE * 10;
+    int res = -MATE * 10;
+    Board backup = _board;
+
+    const ChessMove* bestMove = nullptr;
+
+    for(const ChessMove& chessMove : allMoves){
+        _board.movePiece(chessMove);
+        res = -negamax(!me, -MATE*10, MATE*10, 3);
+        _board = backup;
+
+        if(res > bestScore){
+            bestScore = res;
+            bestMove = &chessMove;
+        }
+    }
+
+    if(bestMove != nullptr){
+        _board.movePiece(*bestMove);
+        boardToGrid();
+    }
+    endTurn();
+}
+
+int Chess::negamax(const Color color, int a, int b, const int d){
+
+
+    std::vector<ChessMove> allMoves = _board.getAllMoves(color);
+
+    if(_board.getBitBoard(color, King) == 0) return -MATE;
+    if(_board.getBitBoard(!color, King) == 0) return MATE;
+
+    if(_board.kingCaptureAvailible(color)) return -MATE;
+    if(_board.inMate(color)) return -MATE;
+
+    if(_board.kingCaptureAvailible(!color)) return MATE;
+    if(_board.inMate(!color)) return MATE;
+
+    if(d <= 0) return _board.eval(color);
+
+
+
+    int bestScore = -MATE * 10;
+    int res = -MATE * 10;
+
+    Board backup = _board;
+    for(const ChessMove& chessMove : allMoves){
+        _board.movePiece(chessMove);
+        res = -negamax(!color, -b, -a, d-1);
+        _board = backup;
+
+        bestScore = std::max(res, bestScore);
+        a = std::max(res, a);
+
+        if(a >= b){
+            return bestScore;
+        }
+    }
+
+    return bestScore;
+    
 }
 
 bool Chess::actionForEmptyHolder(BitHolder &holder)

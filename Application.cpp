@@ -96,7 +96,7 @@ namespace ClassGame {
                     }
                     ImGui::SameLine();
                     if (ImGui::Button("Start Chess")) {
-                        game = new Chess();
+                        game = new Chess(aiStatus);
                         game->setUpBoard();
                     }
                     
