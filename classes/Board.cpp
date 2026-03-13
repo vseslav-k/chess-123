@@ -154,10 +154,9 @@ MoveResults Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint
         _halfMoveCount = 0;
          updateBitBoards(dstPiece.color , dstPiece.piece, newPiecePos, 0ULL); 
     }
-
+    updateBitBoards(color, piece, oldPiecePos, newPiecePos);
     moveRes = handleSpecialMove(color, piece, srcIdx, dstIdx, newPiecePos, oldPiecePos);
         
-    updateBitBoards(color, piece, oldPiecePos, newPiecePos);
     _currColor = !_currColor;
     ++_moveCount;
     handleMoveResult(color, piece, srcIdx, dstIdx);
