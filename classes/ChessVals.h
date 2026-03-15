@@ -169,8 +169,8 @@ inline constexpr std::array<int8_t, 64> PST_PAWN_WHITE = {
     10, 10, 20, 30, 30, 20, 10, 10,   // rank 6
      5,  5, 10, 25, 25, 10,  5,  5,   // rank 5
      0,  0,  0, 20, 20,  0,  0,  0,   // rank 4
-     5, -5,-10,  0,  0,-10, -5,  5,   // rank 3
-     5, 10, 10,-20,-20, 10, 10,  5,   // rank 2 (starting rank)
+    10, -5,-10, 10, 10,-10, -5, 10,   // rank 3
+     5,  5,  5,-25,-25,  5,  5,  5,   // rank 2 (starting rank)
      0,  0,  0,  0,  0,  0,  0,  0    // rank 1
 };
 
@@ -238,8 +238,8 @@ inline constexpr std::array<int8_t, 64> PST_KING_WHITE = {
 // Access pattern: PST_PAWN_BLACK[i] == PST_PAWN_WHITE[63-i]
 inline constexpr std::array<int8_t, 64> PST_PAWN_BLACK = {
      0,  0,  0,  0,  0,  0,  0,  0,
-     5, 10, 10,-20,-20, 10, 10,  5,
-     5, -5,-10,  0,  0,-10, -5,  5,
+     5,  5,  5,-25,-25,  5,  5,  5,
+    10, -5,-10,  5,  5,-10, -5, 10,
      0,  0,  0, 20, 20,  0,  0,  0,
      5,  5, 10, 25, 25, 10,  5,  5,
     10, 10, 20, 30, 30, 20, 10, 10,
