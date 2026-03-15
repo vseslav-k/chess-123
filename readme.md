@@ -18,3 +18,5 @@ Engine lets players make only legal moves
 because filter illegal moves is so slow, my negamax implementation does not use it. Instead it just checks if a given state is illegal(king in check and not kings turn) and immediately returns MATE for such state. In
 
 Most of my logic happens in the board class
+
+AI can play as both sides
