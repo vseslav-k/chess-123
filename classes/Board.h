@@ -38,9 +38,6 @@ public:
 
     PieceIdentity   determinePiece(uint8_t idx) const;
 
-    bool            detectMate(Color color, uint8_t idx);
-    bool            detectCheck(Color color);
-    bool            detectMate(Color color);
 
     static bool     canPieceMoveFromTo(uint64_t moves, uint8_t dstIdx){return moves & setBit(0ULL, dstIdx, true);}
     static bool     canPieceMoveFromTo(uint64_t moves, uint64_t dst){return moves & dst;}
@@ -54,22 +51,35 @@ public:
 
     
     Board();
+    Board(const Board& b);
+    Board(const Board const* b);
     Board(const std::string & fen);
 
-    Color getCurrColor(){return _currColor;}
+    Color getCurrColor() const {return _currColor;}
 
 
     std::vector<ChessMove> getAllMoves(Color color);
 
     int eval(Color color);
-    bool inMate(const Color col)const;
-    bool inCheck(const Color col)const{return _inCheck[col];}
 
-    bool kingCaptureAvailible(Color col) {return (inCheck(col) && (_currColor != col));}
-    bool detectKingCapture(Color col){return (detectCheck(col) && (_currColor != col));}
 
-    bool getIllegalState() {return (inCheck(White) && !_currColor) || (inCheck(Black) && _currColor);}
-    bool detectIllegalState(){return (detectCheck(White) && !_currColor) || (detectCheck(Black) && _currColor);}
+    bool inCheck(const Color color) const;
+    bool inMate(const Color color) const;
+
+    bool canTakeKing(Color color);
+
+    uint8_t halfMoveCount() const {return _halfMoveCount;}
+
+    void recalcAttackMasks();
+    uint64_t filterIllegalMoves(Color color, ChessPiece piece, uint8_t pos, uint64_t moves);
+
+
+
+    const std::array<std::array<uint64_t, 6>, 2>& pieces() const{return _pieces;}
+    const std::array<uint64_t, 2>& attackMask() const{return _attackMask;}
+    const uint32_t moveCount() const{return _moveCount;}
+    const uint8_t enPassantIdx() const{return _enPassantIdx;}
+    const uint8_t castling() const{return _castling;}
 
 
 
@@ -77,6 +87,7 @@ public:
 private:
 
     std::array<std::array<uint64_t, 6>, 2> _pieces;
+    std::array<uint64_t, 2> _attackMask;
     
     uint64_t _occupied;
     uint64_t _free;
@@ -90,7 +101,6 @@ private:
     uint8_t _halfMoveCount;
     Color _currColor;
 
-    std::array<bool, 2> _inCheck;
 
 
 
@@ -114,12 +124,29 @@ private:
     uint64_t getMovesQueenBlack(uint8_t idx) const;
     uint64_t getMovesKingBlack(uint8_t idx) const;
 
+    uint64_t getAttacksOnlyPawnWhite(uint8_t idx) const;
+    uint64_t getAttacksOnlyPawnBlack(uint8_t idx) const;
+    uint64_t getWalksOnlyPawnWhite(uint8_t idx) const;
+    uint64_t getWalksOnlyPawnBlack(uint8_t idx) const;
+
+
+    uint64_t getAttacksOnlyPawn(Color col, uint8_t idx) const {
+        switch(col){
+            case White: return getAttacksOnlyPawnWhite(idx);
+            default: return getAttacksOnlyPawnBlack(idx);
+        }
+    }
+    uint64_t getWalksOnlyPawn(Color col, uint8_t idx) const {
+        switch(col){
+            case White: return getWalksOnlyPawnWhite(idx);
+            default: return getWalksOnlyPawnBlack(idx);
+        }
+    }
 
     
     void handleMoveResult(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx);
 
     MoveResults handleSpecialMove(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx, uint64_t newPiecePos, uint64_t oldPiecePos);
-
 
 };
 
@@ -149,10 +176,10 @@ struct ChessMove{
 
 
 struct BoardBackup{
+    std::array<uint64_t, 2> attackMask;
     uint8_t castling;
     uint8_t enPassant;
     uint8_t halfMoveCount;
-    std::array<bool, 2> inCheck;
 
-    BoardBackup(uint8_t castle, uint8_t en, uint8_t half, std::array<bool, 2> check): castling{castle}, enPassant{en}, halfMoveCount{half}, inCheck(check){}
+    BoardBackup(std::array<uint64_t, 2> atk, uint8_t castle, uint8_t en, uint8_t half): attackMask{atk}, castling{castle}, enPassant{en}, halfMoveCount{half}{}
 };

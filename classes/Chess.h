@@ -101,4 +101,5 @@ private:
     Grid* _grid;
     Board _board;
     int8_t _aiNumber;
+    bool _gameOver;
 };

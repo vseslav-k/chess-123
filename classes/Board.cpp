@@ -163,23 +163,52 @@ MoveResults Board::movePiece(ChessMove move){
     handleMoveResult(move.color, move.piece, move.src, move.dst);
     return moveRes;
 }
-
 MoveResults Board::movePiece(Color color, ChessPiece piece, uint8_t srcIdx, uint8_t dstIdx){
     ChessMove move = ChessMove(color, piece, srcIdx, dstIdx, determinePiece(dstIdx).piece);
     return movePiece(move);
 }
-
 MoveResults Board::movePiece(uint8_t srcIdx, uint8_t dstIdx){
     PieceIdentity identity = determinePiece(srcIdx);
     return movePiece(identity.color, identity.piece,srcIdx,dstIdx);
 }
 
+bool Board::inCheck(const Color color) const{
+    return _attackMask[!color] & getBitBoard(color, King);
+}
 
 
+bool Board::inMate(const Color color) const{
+
+    if(!inCheck(color)) return false;
+
+    for(ChessPiece piece = King; piece > NoPiece; piece = static_cast<ChessPiece>(piece -1)){
+        uint64_t pieceBB = getBitBoard(color, piece);
+        for(uint8_t i = nextSetBit(pieceBB); i < 64; i = nextSetBit(pieceBB)){
+            uint64_t movesBB = getMoves(color, piece, i) & ((piece == Pawn)? ~getWalksOnlyPawn(color, i):UINT64_MAX);
+            for(uint8_t j = nextSetBit(movesBB); j  < 64; j = nextSetBit(movesBB)){
+                Board testBoard = Board(this);
+                testBoard.movePiece(color, piece, i, j);
+                testBoard.recalcAttackMasks();
+                if(!testBoard.canTakeKing(color)){
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+
+
+
+bool Board::canTakeKing(Color color){
+    return inCheck(color) && (_currColor != color);
+}
 
 
 BoardBackup Board::makeBackup() const{
-    return BoardBackup(_castling, _enPassantIdx, _halfMoveCount, _inCheck);
+    return BoardBackup(_attackMask,_castling, _enPassantIdx, _halfMoveCount);
 }
 void Board::undoMove(ChessMove move, BoardBackup backup){
     uint64_t newPiecePos = setBit(0ULL, move.dst, true);
@@ -189,16 +218,40 @@ void Board::undoMove(ChessMove move, BoardBackup backup){
 
     if(move.capturePiece != NoPiece){
         updateBitBoards(!move.color, move.capturePiece, 0ULL, newPiecePos);
+        _attackMask[!move.color] |= getMoves(!move.color, move.capturePiece, move.dst);
     }
 
     _halfMoveCount = backup.halfMoveCount;
-    _inCheck = backup.inCheck;
     _castling = backup.castling;
     _enPassantIdx = backup.enPassant;
     
 
     _currColor = !_currColor;
     --_moveCount;
+    _attackMask = backup.attackMask;
+}
+
+
+
+
+uint64_t Board::filterIllegalMoves(Color color, ChessPiece piece, uint8_t pos, uint64_t moves){
+
+    uint64_t legalMoves = moves;
+
+    
+
+        
+    for(int i = nextSetBit(moves) ;i < 64; i = nextSetBit(moves)){
+        Board testBoard = Board(this);
+        testBoard.movePiece(color, piece, pos, i);
+        testBoard.recalcAttackMasks();
+        if(testBoard.canTakeKing(color)){
+            legalMoves &= ~setBit(0ULL, i, 1);
+        }
+    }
+    
+
+    return legalMoves;
 }
 
 
@@ -234,47 +287,6 @@ uint64_t Board::getMoves(uint8_t idx) const{
     return getMoves(identity.color, identity.piece, idx);
 }
 
-bool Board::detectCheck(Color color){
-
-    for(ChessPiece p = King; p > NoPiece; p = static_cast<ChessPiece>(p-1)){
-        uint64_t pieceBB = getBitBoard(!color, p);
-        for(uint8_t i = nextSetBit(pieceBB); i < 64; i = nextSetBit(pieceBB)){
-            if((getMoves(!color, p, i) & getBitBoard(color, King)) != 0){
-                _inCheck[color] = true;
-                return true;
-            }
-        }
-    }
-    _inCheck[color] = false;
-    return false;
-}
-
-bool Board::detectMate(Color color, uint8_t idx){
-    uint64_t kingMoves = color? getMovesKingBlack(idx):getMovesKingWhite(idx);
-
-    return detectCheck(color) && std::popcount(kingMoves) == 0;
-}
-
-
-
-
-
-bool Board::detectMate(Color color){
-
-    return detectMate(color, std::countl_zero(getBitBoard(color, King)));
-    
-    /*std::string colorString = static_cast<bool>(color)? "black" : "white";
-    log(Error, "Error in detectMate: No " + colorString + " king exists");
-    return false;*/
-}
-
-
-bool Board::inMate(const Color col)const{
-    uint8_t idx =  std::countl_zero(getBitBoard(col, King));
-    uint64_t kingMoves = col? getMovesKingBlack(idx):getMovesKingWhite(idx);
-
-    return inCheck(col) && std::popcount(kingMoves) == 0;
-}
 
 int Board::eval(Color color){
     int32_t score[] = {0,0};
@@ -290,34 +302,46 @@ int Board::eval(Color color){
 
     }
 
-    score[White] -= inCheck(White) * 200;
-    score[White] -= detectMate(White) * MATE;
-
-    score[Black] -= inCheck(Black) * 200;
-    score[Black] -= detectMate(Black) * MATE;
 
     return (-2*color + 1) * (score[White]-score[Black]);
 }
 
 
+void Board::recalcAttackMasks(){
 
+    for(Color color = White ;; color = static_cast<Color>(color+1)){
+        _attackMask[color] = 0ULL;
+        for(ChessPiece piece = King; piece > NoPiece; piece = static_cast<ChessPiece>(piece -1)){
+        uint64_t pieceBB = getBitBoard(color, piece);
+    
+            for(uint8_t i = nextSetBit(pieceBB); i < 64; i = nextSetBit(pieceBB)){
+                uint64_t movesBB = getMoves(color, piece, i) & ((piece == Pawn)? ~getWalksOnlyPawn(color, i):UINT64_MAX);
+
+                _attackMask[color] |= movesBB;
+            }
+        }
+
+        if(color == Black) return;
+    }
+}
 
 
 std::vector<ChessMove> Board::getAllMoves(Color color){
+
+    _attackMask[color] = 0ULL;
 
     std::vector<ChessMove> result;
     result.reserve(256);
 
     for(ChessPiece piece = King; piece > NoPiece; piece = static_cast<ChessPiece>(piece -1)){
         uint64_t pieceBB = getBitBoard(color, piece);
-
+     
         for(uint8_t i = nextSetBit(pieceBB); i < 64; i = nextSetBit(pieceBB)){
-            uint64_t movesBB = getMoves(color, piece, i);
-            
-            if((movesBB & getBitBoard(!color, King)) != 0){
-                _inCheck[!color] = true;
-            }
+            uint64_t movesBB = getMoves(color, piece, i) & ((piece == Pawn)? ~getWalksOnlyPawn(color, i):UINT64_MAX);
 
+
+            _attackMask[color] |= movesBB;
+            
             for(uint8_t j = nextSetBit(movesBB); j  < 64; j = nextSetBit(movesBB)){
                 ChessPiece capturePiece = NoPiece;
                 for(ChessPiece capPiece = King; capPiece > NoPiece; capPiece = static_cast<ChessPiece>(capPiece -1)){
@@ -447,7 +471,6 @@ uint64_t Board::getMovesRookWhite(uint8_t idx) const{
 
     return moves;
 }
-
 uint64_t Board::getMovesQueenWhite(uint8_t idx) const{
     return getMovesBishopWhite(idx) | getMovesRookWhite(idx);
 }
@@ -616,6 +639,102 @@ uint64_t Board::getMovesKingBlack(uint8_t idx) const{
 }
 
 
+uint64_t Board::getAttacksOnlyPawnWhite(uint8_t idx) const{
+    uint64_t me = setBit(0ULL, idx, 1);
+    uint64_t moves = 0ULL;
+
+
+    uint64_t left = me << 9;
+    uint64_t right = me << 7;
+
+
+    moves |= (left & (_blacks | setBit(0ULL, _enPassantIdx, 1)));   
+    /*
+    if((right & _blacks) && !(right & Col0))
+        moves |= right;
+    */
+    moves |= (right & (_blacks | setBit(0ULL, _enPassantIdx, 1)));
+    
+
+    moves &= ~((idx % 8 == 0) * UTIL_BOARDS[Col7]);
+    moves &= ~(((idx-7) % 8 == 0) * UTIL_BOARDS[Col0]);
+
+
+    return moves;
+}
+uint64_t Board::getAttacksOnlyPawnBlack(uint8_t idx) const{
+    uint64_t me = setBit(0ULL, idx, 1);
+    uint64_t moves = 0ULL;
+
+    uint64_t left = me >> 7;
+    uint64_t right = me >> 9;
+
+
+    moves |= (right & (_whites | setBit(0ULL, _enPassantIdx, 1)));
+    /*
+    if((right & _whites) && !(right & Col0))
+        moves |= right;
+    */
+    moves |= (left & (_whites | setBit(0ULL, _enPassantIdx, 1)));
+
+
+    moves &= ~((idx % 8 == 0) * UTIL_BOARDS[Col7]);
+    moves &= ~(((idx-7) % 8 == 0) * UTIL_BOARDS[Col0]);
+
+    
+    return moves;
+}
+uint64_t Board::getWalksOnlyPawnWhite(uint8_t idx) const{
+    uint64_t me = setBit(0ULL, idx, 1);
+    uint64_t moves = 0;
+
+    uint64_t forward = me << 8;
+    uint64_t forward2 = me << 16;
+
+    /*
+    if(forward & _free)
+        moves |= forward;
+    */
+    moves |= (forward & _free);
+    /*
+    if((forward & _free) && (forward2 & _free) && (me & UTIL_BOARDS[Row1]))
+        moves |= forward2;
+    */
+    moves |= ((forward & _free) << 8) & (forward2 & _free) & ((me & UTIL_BOARDS[Row1]) << 16);
+
+    
+
+    moves &= ~((idx % 8 == 0) * UTIL_BOARDS[Col7]);
+    moves &= ~(((idx-7) % 8 == 0) * UTIL_BOARDS[Col0]);
+
+
+    return moves;
+}
+uint64_t Board::getWalksOnlyPawnBlack(uint8_t idx) const{
+    uint64_t me = setBit(0ULL, idx, 1);
+    uint64_t moves = 0;
+
+    uint64_t forward = me >> 8;
+    uint64_t forward2 = me >> 16;
+
+    /*
+    if(forward & _free)
+        moves |= forward;
+    */
+    moves |= (forward & _free);
+    /*
+    if((forward & _free) && (forward2 & _free) && (me & UTIL_BOARDS[Row6]))
+        moves |= forward2;
+    */
+    moves |= ((forward & _free) >> 8) & (forward2 & _free) & ((me & UTIL_BOARDS[Row6]) >> 16);
+
+
+    moves &= ~((idx % 8 == 0) * UTIL_BOARDS[Col7]);
+    moves &= ~(((idx-7) % 8 == 0) * UTIL_BOARDS[Col0]);
+
+    
+    return moves;
+}
 
 std::string Board::toString(){
 
@@ -796,6 +915,7 @@ void Board::buildFromFen(const std::string & fen){
     if(spaceIdx == turns.length() || spaceIdx == turns.length()-1) return;
 
     _moveCount = std::stoi(turns.substr(spaceIdx+1));
+    recalcAttackMasks();
 
 }
 
@@ -834,14 +954,41 @@ Board::Board():  _moveCount(0), _enPassantIdx(0), _castling(0b11110000), _halfMo
     _occupied = _whites | _blacks;
     _free = ~_occupied;
 
+    recalcAttackMasks();
 
-    _inCheck[White] = false;
-    _inCheck[Black]  = false;
+
 }
 
 Board::Board(const std::string & fen){
     buildFromFen(fen);
-
-    _inCheck[White] = false;
-    _inCheck[Black]  = false;
+    
 }
+
+
+Board::Board(const Board& b): 
+    _pieces{b.pieces()}, 
+    _attackMask{b.attackMask()}, 
+    _occupied{b.getOccupancyAll()},
+    _free{b.getFree()},
+    _whites{b.getOccupancy(White)},
+    _blacks{b.getOccupancy(Black)},
+    _moveCount{b._moveCount},
+    _enPassantIdx{b.enPassantIdx()},
+    _castling{b.castling()},
+    _halfMoveCount{b.halfMoveCount()},
+    _currColor{b.getCurrColor()}
+{}
+
+Board::Board(const Board const* b): 
+    _pieces{(*b).pieces()}, 
+    _attackMask{(*b).attackMask()}, 
+    _occupied{(*b).getOccupancyAll()},
+    _free{(*b).getFree()},
+    _whites{(*b).getOccupancy(White)},
+    _blacks{(*b).getOccupancy(Black)},
+    _moveCount{(*b)._moveCount},
+    _enPassantIdx{(*b).enPassantIdx()},
+    _castling{(*b).castling()},
+    _halfMoveCount{(*b).halfMoveCount()},
+    _currColor{(*b).getCurrColor()}
+{}

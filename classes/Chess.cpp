@@ -7,11 +7,33 @@ Chess::Chess(int8_t aiNumber): _board()
 {
     _grid = new Grid(8, 8);
     _aiNumber = aiNumber-1;
+
 }
 
 Chess::~Chess()
 {
     delete _grid;
+}
+
+Player *Chess::checkForWinner(){
+
+    if(_board.inMate(Black) || _board.canTakeKing(Black)){
+        _gameOver = true;
+        return getPlayerAt(White);
+    }
+    if(_board.inMate(White)|| _board.canTakeKing(White)){
+        _gameOver = true;
+        return getPlayerAt(Black);
+    }
+
+    return nullptr;
+}
+bool Chess::checkForDraw(){
+    if(_board.halfMoveCount() == 50){
+        _gameOver = true;
+        return true;
+    }
+    return false;
 }
 
 
@@ -114,7 +136,9 @@ Bit* Chess::PieceForPlayer(const int playerNumber, const ChessPiece piece)
 }
 
 void Chess::setUpBoard()
-{
+{   
+    _gameOver = false;
+    _board = Board();
     setNumberOfPlayers(2);
     _gameOptions.rowX = 8;
     _gameOptions.rowY = 8;
@@ -202,6 +226,13 @@ void Chess::FENtoBoard(const std::string& fen) {
 }
 
 void Chess::updateAI(){
+
+
+    if(_gameOver){
+        endTurn();
+        return;
+    }
+
     Color me = _board.getCurrColor();
     std::vector<ChessMove> allMoves = _board.getAllMoves(me);
 
@@ -213,18 +244,20 @@ void Chess::updateAI(){
 
     for(const ChessMove& chessMove : allMoves){
         _board.movePiece(chessMove);
-        res = -negamax(!me, -MATE*10, MATE*10, 3);
+        res = -negamax(!me, -MATE*10, MATE*10, 4);
         _board = backup;
 
         if(res > bestScore){
             bestScore = res;
             bestMove = &chessMove;
+            
         }
     }
 
     if(bestMove != nullptr){
         _board.movePiece(*bestMove);
         boardToGrid();
+        _board.recalcAttackMasks();
     }
     endTurn();
 }
@@ -232,16 +265,15 @@ void Chess::updateAI(){
 int Chess::negamax(const Color color, int a, int b, const int d){
 
 
+    
+
+    _board.recalcAttackMasks();
+
+    if(_board.getBitBoard(color, King) == 0ULL || _board.canTakeKing(color)) return -MATE*d;
+    if(_board.getBitBoard(!color, King) == 0ULL|| _board.canTakeKing(!color)) return MATE*d;
+
     std::vector<ChessMove> allMoves = _board.getAllMoves(color);
 
-    if(_board.getBitBoard(color, King) == 0) return -MATE;
-    if(_board.getBitBoard(!color, King) == 0) return MATE;
-
-    if(_board.kingCaptureAvailible(color)) return -MATE;
-    if(_board.inMate(color)) return -MATE;
-
-    if(_board.kingCaptureAvailible(!color)) return MATE;
-    if(_board.inMate(!color)) return MATE;
 
     if(d <= 0) return _board.eval(color);
 
@@ -274,16 +306,16 @@ bool Chess::actionForEmptyHolder(BitHolder &holder)
     log(Debug, "\n\n");
     log(Debug, _board.toString());
 
-    std::vector<ChessMove> allMoves = _board.getAllMoves(_board.getCurrColor());
 
     return false;
 }
 
 bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
-{   
+{     
+
 
     bool playerMismatch = _board.getCurrColor() != getCurrentPlayer()->playerNumber();
-    if(playerMismatch) endTurn();
+    if(playerMismatch || _gameOver) endTurn();
     return( (getCurrentPlayer()->playerNumber() == 0 && bit.gameTag() < 7) || (getCurrentPlayer()->playerNumber() == 1 && bit.gameTag() >= 7) );
 
 
@@ -293,12 +325,12 @@ bool Chess::canBitMoveFrom(Bit &bit, BitHolder &src)
 
 bool Chess::canBitMoveFromTo(Bit &bit, BitHolder &src, BitHolder &dst)
 {
-    return Board::canPieceMoveFromTo(
-        _board.getMoves(
-            getPieceIdentity(bit), 
-            getIdx(src)
-        ),
 
+    uint8_t idx = getIdx(src);
+    PieceIdentity identity = getPieceIdentity(bit);
+    
+    return Board::canPieceMoveFromTo(
+        _board.filterIllegalMoves(identity.color, identity.piece, idx, _board.getMoves(identity, idx)),
         getIdx(dst)
     );
 }
@@ -308,7 +340,7 @@ void Chess::bitMovedFromTo(Bit &bit, BitHolder &src, BitHolder &dst){
     MoveResults res = _board.movePiece(getPieceIdentity(bit), getIdx(src), getIdx(dst));
     //log(Info, "MoveRes " + numToStr(static_cast<uint8_t>(res)));
     handleMoveResult(bit, src, dst, res);
-
+    _board.recalcAttackMasks();
     endTurn();
 }
 
@@ -372,7 +404,8 @@ void Chess::handleMoveResult(Bit &bit, BitHolder &src, BitHolder &dst, MoveResul
 
 
 void Chess::stopGame()
-{
+{   
+
     _grid->forEachSquare([](ChessSquare* square, int x, int y) {
         square->destroyBit();
     });
@@ -389,16 +422,6 @@ Player* Chess::ownerAt(int x, int y) const
         return nullptr;
     }
     return square->bit()->getOwner();
-}
-
-Player* Chess::checkForWinner()
-{
-    return nullptr;
-}
-
-bool Chess::checkForDraw()
-{
-    return false;
 }
 
 std::string Chess::initialStateString()
