@@ -258,6 +258,7 @@ void Chess::updateAI(){
         _board.movePiece(*bestMove);
         boardToGrid();
         _board.recalcAttackMasks();
+        _lastAIMove = *bestMove;
     }
     endTurn();
 }
@@ -452,3 +453,4 @@ void Chess::setStateString(const std::string &s)
         }
     });
 }
+

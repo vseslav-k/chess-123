@@ -45,8 +45,8 @@ public:
     static std::string idxToBoardCord(uint8_t idx);
     static uint8_t     boardCordToIdx(char l, char n);
 
-    std::string toString();
-    std::string getFen();
+    std::string toString() const;
+    std::string getFen() const;
     void buildFromFen(const std::string & fen);
 
     
@@ -158,9 +158,11 @@ struct ChessMove{
     uint8_t dst;
     ChessPiece capturePiece;
 
-    ChessMove(Color c, ChessPiece p, uint8_t s, uint8_t d, ChessPiece cp): color{c}, piece{p}, src{s}, dst{d}, capturePiece{cp}{}
+    ChessMove(Color c , ChessPiece p , uint8_t s , uint8_t d , ChessPiece cp): color{c}, piece{p}, src{s}, dst{d}, capturePiece{cp}{}
     
 
+    ChessMove():color{White}, piece{NoPiece}, src{0}, dst{0}, capturePiece{NoPiece}{}
+    
 
     bool operator>(ChessMove m)const{
         return static_cast<uint8_t>(capturePiece) > static_cast<uint8_t>(m.capturePiece);

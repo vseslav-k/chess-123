@@ -4,11 +4,12 @@
 #include "classes/Checkers.h"
 #include "classes/Othello.h"
 #include "classes/Chess.h"
-
+#include  "classes/Tournament.h"
 namespace ClassGame {
         //
         // our global variables
         //
+        TournamentClient *client = nullptr;
         Game *game = nullptr;
         bool gameOver = false;
         int gameWinner = -1;
@@ -39,7 +40,7 @@ namespace ClassGame {
         void getSessions(){
             ImGui::SameLine();
             ImGui::InputScalar("Training Sessions", ImGuiDataType_U32, &sessions);
-            sessions = std::max(0U, sessions);
+            sessions = max(0ULL, sessions);
         }
 
 
@@ -97,7 +98,10 @@ namespace ClassGame {
                     ImGui::SameLine();
                     if (ImGui::Button("Start Chess")) {
                         game = new Chess(aiStatus);
+                        client = new TournamentClient(static_cast<Chess*>(game), "BadBot");
                         game->setUpBoard();
+
+                        client->connect("13.223.80.180", 5000);
                     }
                     
                     if (ImGui::Button(dispAIPlayerStatus(aiStatus))) {
@@ -138,7 +142,9 @@ namespace ClassGame {
                     if (ImGui::Button("Back")) {
                         sessions = 0;
                         delete game;
+                        delete client;
                         game = nullptr;
+                        client = nullptr;
                     }
 
 
@@ -154,6 +160,7 @@ namespace ClassGame {
                         game->updateAI();
                     }
                     game->drawFrame();
+                    client->update();
                 }
                 ImGui::End();
         }

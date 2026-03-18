@@ -41,6 +41,10 @@ public:
 
     void updateAI() override;
 
+    const ChessMove& getLastAIMove() const {return _lastAIMove;}
+    void FENtoBoard(const std::string& fen);
+    std::string getFEN() const {return _board.getFen();}
+
 private:
 
 
@@ -54,7 +58,6 @@ private:
 
     Bit* PieceForPlayer(const int playerNumber, const ChessPiece piece);
     Player* ownerAt(int x, int y) const;
-    void FENtoBoard(const std::string& fen);
     char pieceNotation(int x, int y) const;
     void boardToGrid();
 
@@ -102,4 +105,7 @@ private:
     Board _board;
     int8_t _aiNumber;
     bool _gameOver;
+    ChessMove _lastAIMove;
 };
+
+#define TOURNAMENT_IMPLEMENTATION

@@ -736,7 +736,7 @@ uint64_t Board::getWalksOnlyPawnBlack(uint8_t idx) const{
     return moves;
 }
 
-std::string Board::toString(){
+std::string Board::toString() const{
 
     std::string res = "";
     res.reserve(73);
@@ -763,7 +763,7 @@ std::string Board::toString(){
 
     return res;
 }
-std::string Board::getFen(){
+std::string Board::getFen() const{
     //"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
     
     std::string simpleStr = toString();
