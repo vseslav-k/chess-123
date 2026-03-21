@@ -7,8 +7,9 @@
 #include "bitops.h"
 #include <array>
 
-#include "C:\Libraries\imgui\logger\logger.h"
-#include "C:\Libraries\imgui\Timer\Timer.h"
+#include "../myLogger/imgui/logger/logger.h"
+#include "../myLogger/imgui/Timer/Timer.h"
+
 
 constexpr int pieceSize = 80;
 

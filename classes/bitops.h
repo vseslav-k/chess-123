@@ -1,6 +1,7 @@
 #pragma once
 #include "../imgui/imgui.h"
-#include "C:\Libraries\imgui\logger\logger.h"
+#include "../myLogger/imgui/logger/logger.h"
+
 #include <cstdint>
 inline uint64_t setBit(uint64_t x, const unsigned int pos, const bool value) {
     if (pos >= 64) {

@@ -5,7 +5,7 @@
 #include "ChessVals.h"
 #include <utility> 
 #include <algorithm> 
-#include "C:\Libraries\imgui\logger\logger.h"
+#include "../myLogger/imgui/logger/logger.h"
 struct ChessMove;
 struct BoardBackup;
 

@@ -1,6 +1,7 @@
 #include "BitHolder.h"
 #include "Bit.h"
-#include "C:\Libraries\imgui\logger\logger.h"
+#include "../myLogger/imgui/logger/logger.h"
+
 
 
 BitHolder::~BitHolder()

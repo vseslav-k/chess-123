@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <array>
-#include "C:\Libraries\imgui\logger\logger.h"
+#include "../myLogger/imgui/logger/logger.h"
 
 
 enum UtilBoardsIdx: uint8_t{
@@ -315,4 +315,4 @@ inline int8_t positionMultiplier(const Color col, const ChessPiece piece, const 
     return POSITION_MULTIPLIERS[piece-1 + col*6][i];
 }
 
-inline constexpr std::array<int8_t, 7> PIECEVAL = {0, 1, 3, 3, 5, 9, 100};
+inline constexpr std::array<int8_t, 7> PIECEVAL = {0, 1, 3, 3, 5, 9, 5};
